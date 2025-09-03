@@ -166,6 +166,7 @@ export type Database = {
           creator_id: string
           current_participants: number
           description: string | null
+          end_date: string | null
           frequency: Database["public"]["Enums"]["group_frequency"]
           id: string
           max_participants: number
@@ -173,6 +174,7 @@ export type Database = {
           payout_order_finalized: boolean
           start_date: string
           status: Database["public"]["Enums"]["group_status"]
+          target_amount: number | null
           updated_at: string
         }
         Insert: {
@@ -181,6 +183,7 @@ export type Database = {
           creator_id: string
           current_participants?: number
           description?: string | null
+          end_date?: string | null
           frequency: Database["public"]["Enums"]["group_frequency"]
           id?: string
           max_participants: number
@@ -188,6 +191,7 @@ export type Database = {
           payout_order_finalized?: boolean
           start_date: string
           status?: Database["public"]["Enums"]["group_status"]
+          target_amount?: number | null
           updated_at?: string
         }
         Update: {
@@ -196,6 +200,7 @@ export type Database = {
           creator_id?: string
           current_participants?: number
           description?: string | null
+          end_date?: string | null
           frequency?: Database["public"]["Enums"]["group_frequency"]
           id?: string
           max_participants?: number
@@ -203,6 +208,7 @@ export type Database = {
           payout_order_finalized?: boolean
           start_date?: string
           status?: Database["public"]["Enums"]["group_status"]
+          target_amount?: number | null
           updated_at?: string
         }
         Relationships: []
@@ -335,7 +341,7 @@ export type Database = {
       app_role: "admin" | "user"
       contribution_status: "pending" | "paid" | "late" | "missed"
       document_type: "drivers_license" | "nin" | "passport"
-      group_frequency: "daily" | "weekly" | "monthly"
+      group_frequency: "daily" | "weekly" | "monthly" | "every"
       group_status: "recruiting" | "active" | "completed" | "cancelled"
       transaction_category:
         | "contribution"
@@ -474,7 +480,7 @@ export const Constants = {
       app_role: ["admin", "user"],
       contribution_status: ["pending", "paid", "late", "missed"],
       document_type: ["drivers_license", "nin", "passport"],
-      group_frequency: ["daily", "weekly", "monthly"],
+      group_frequency: ["daily", "weekly", "monthly", "every"],
       group_status: ["recruiting", "active", "completed", "cancelled"],
       transaction_category: [
         "contribution",

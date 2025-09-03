@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, Users, Calendar, DollarSign, AlertCircle } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ArrowLeft, Users, Calendar, DollarSign, AlertCircle, Clock, Target } from 'lucide-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
@@ -18,14 +19,17 @@ const CreateGroup = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [showPreview, setShowPreview] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     contributionAmount: '',
+    targetAmount: '',
     frequency: '',
     maxParticipants: '',
-    startDate: ''
+    startDate: '',
+    endDate: ''
   });
 
   // Check if user is verified
@@ -45,6 +49,36 @@ const CreateGroup = () => {
     enabled: !!user?.id
   });
 
+  // Calculate number of periods between start and end date based on frequency
+  const calculatePeriods = (startDate: string, endDate: string, frequency: string): number => {
+    if (!startDate || !endDate || !frequency) return 0;
+    
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffTime = end.getTime() - start.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    switch (frequency) {
+      case 'daily':
+        return diffDays;
+      case 'weekly':
+        return Math.ceil(diffDays / 7);
+      case 'monthly':
+        return Math.ceil(diffDays / 30);
+      case 'every':
+        return 1; // For 'every' frequency, it's just one lump sum
+      default:
+        return 0;
+    }
+  };
+
+  // Calculate expected total based on contribution amount and periods
+  const calculateExpectedTotal = (): number => {
+    const periods = calculatePeriods(formData.startDate, formData.endDate, formData.frequency);
+    const contributionAmount = parseNumberInput(formData.contributionAmount);
+    return periods * contributionAmount;
+  };
+
   const createGroupMutation = useMutation({
     mutationFn: async (groupData: typeof formData) => {
       if (!user?.id) throw new Error('User not authenticated');
@@ -55,9 +89,11 @@ const CreateGroup = () => {
           name: groupData.name,
           description: groupData.description,
           contribution_amount: parseNumberInput(groupData.contributionAmount),
-          frequency: groupData.frequency as 'weekly' | 'monthly',
+          target_amount: parseNumberInput(groupData.targetAmount),
+          frequency: groupData.frequency as 'daily' | 'weekly' | 'monthly' | 'every',
           max_participants: parseInt(groupData.maxParticipants),
           start_date: groupData.startDate,
+          end_date: groupData.endDate,
           creator_id: user.id,
           status: 'recruiting'
         })
@@ -82,6 +118,7 @@ const CreateGroup = () => {
         title: "Group Created!",
         description: `"${data.name}" has been created successfully.`,
       });
+      setShowPreview(false);
       navigate('/groups');
     },
     onError: (error: any) => {
@@ -94,8 +131,8 @@ const CreateGroup = () => {
   });
 
   const handleInputChange = (field: string, value: string) => {
-    if (field === 'contributionAmount') {
-      // Format contribution amount with commas
+    if (field === 'contributionAmount' || field === 'targetAmount') {
+      // Format contribution and target amounts with commas
       const formatted = formatNumberInput(value);
       setFormData(prev => ({ ...prev, [field]: formatted }));
     } else if (field === 'maxParticipants') {
@@ -109,12 +146,10 @@ const CreateGroup = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validation
-    if (!formData.name || !formData.contributionAmount || !formData.frequency || 
-        !formData.maxParticipants || !formData.startDate) {
+  const handlePreview = () => {
+    // Validation for preview
+    if (!formData.name || !formData.contributionAmount || !formData.targetAmount || 
+        !formData.frequency || !formData.maxParticipants || !formData.startDate || !formData.endDate) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields",
@@ -141,6 +176,32 @@ const CreateGroup = () => {
       return;
     }
 
+    if (new Date(formData.endDate) <= new Date(formData.startDate)) {
+      toast({
+        title: "Invalid Date Range",
+        description: "End date must be after start date",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate target amount matches expected total
+    const expectedTotal = calculateExpectedTotal();
+    const targetAmount = parseNumberInput(formData.targetAmount);
+    
+    if (Math.abs(expectedTotal - targetAmount) > 0.01) {
+      toast({
+        title: "Amount Mismatch",
+        description: `Target amount should match expected total: ${formatCurrency(expectedTotal)}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setShowPreview(true);
+  };
+
+  const handleSubmit = () => {
     createGroupMutation.mutate(formData);
   };
 
@@ -202,183 +263,262 @@ const CreateGroup = () => {
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Group Details</CardTitle>
-              <CardDescription>
-                Provide the basic information for your thrift group
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="max-w-4xl">
+        <Card>
+          <CardHeader>
+            <CardTitle>Group Details</CardTitle>
+            <CardDescription>
+              Provide the basic information for your thrift group
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="name">Group Name *</Label>
+                <Input
+                  id="name"
+                  placeholder="e.g., Monthly Savers Circle"
+                  value={formData.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  placeholder="Describe the purpose and goals of your group..."
+                  value={formData.description}
+                  onChange={(e) => handleInputChange('description', e.target.value)}
+                  rows={3}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Group Name *</Label>
+                  <Label htmlFor="contribution">Contribution Amount (₦) *</Label>
                   <Input
-                    id="name"
-                    placeholder="e.g., Monthly Savers Circle"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    id="contribution"
+                    type="text"
+                    placeholder="10,000"
+                    value={formData.contributionAmount}
+                    onChange={(e) => handleInputChange('contributionAmount', e.target.value)}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Minimum: ₦1,000
+                  </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="Describe the purpose and goals of your group..."
-                    value={formData.description}
-                    onChange={(e) => handleInputChange('description', e.target.value)}
-                    rows={3}
+                  <Label htmlFor="target">Target Amount (₦) *</Label>
+                  <Input
+                    id="target"
+                    type="text"
+                    placeholder="120,000"
+                    value={formData.targetAmount}
+                    onChange={(e) => handleInputChange('targetAmount', e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Expected: {formData.contributionAmount && formData.startDate && formData.endDate && formData.frequency 
+                      ? formatCurrency(calculateExpectedTotal())
+                      : '₦0'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="frequency">Frequency *</Label>
+                <Select 
+                  value={formData.frequency} 
+                  onValueChange={(value) => handleInputChange('frequency', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select frequency" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border shadow-lg z-50">
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="every">One-time (Lump sum)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="participants">Maximum Participants *</Label>
+                  <Input
+                    id="participants"
+                    type="text"
+                    placeholder="10"
+                    value={formData.maxParticipants}
+                    onChange={(e) => handleInputChange('maxParticipants', e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Between 2 and 50 members
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="start-date">Start Date *</Label>
+                  <Input
+                    id="start-date"
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) => handleInputChange('startDate', e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
                   />
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="contribution">Contribution Amount (₦) *</Label>
-                    <Input
-                      id="contribution"
-                      type="text"
-                      placeholder="10,000"
-                      value={formData.contributionAmount}
-                      onChange={(e) => handleInputChange('contributionAmount', e.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Minimum: ₦1,000
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="frequency">Frequency *</Label>
-                    <Select 
-                      value={formData.frequency} 
-                      onValueChange={(value) => handleInputChange('frequency', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select frequency" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-background border shadow-lg z-50">
-                        <SelectItem value="weekly">Weekly</SelectItem>
-                        <SelectItem value="monthly">Monthly</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="participants">Maximum Participants *</Label>
-                    <Input
-                      id="participants"
-                      type="text"
-                      placeholder="10"
-                      value={formData.maxParticipants}
-                      onChange={(e) => handleInputChange('maxParticipants', e.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Between 2 and 50 members
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="start-date">Start Date *</Label>
-                    <Input
-                      id="start-date"
-                      type="date"
-                      value={formData.startDate}
-                      onChange={(e) => handleInputChange('startDate', e.target.value)}
-                      min={new Date().toISOString().split('T')[0]}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-2 pt-4">
-                  <Button 
-                    type="submit" 
-                    disabled={createGroupMutation.isPending}
-                    className="flex-1"
-                  >
-                    {createGroupMutation.isPending ? 'Creating Group...' : 'Create Group'}
-                  </Button>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => navigate('/groups')}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Preview */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Preview</CardTitle>
-              <CardDescription>How your group will appear to others</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <h4 className="font-medium">{formData.name || 'Group Name'}</h4>
-                <p className="text-sm text-muted-foreground">
-                  {formData.description || 'Group description...'}
-                </p>
               </div>
 
-              <div className="space-y-3 text-sm">
-                <div className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <div className="font-medium">
-                      {formData.contributionAmount 
-                        ? formatCurrency(parseNumberInput(formData.contributionAmount))
-                        : '₦0'
-                      }
-                    </div>
-                    <div className="text-muted-foreground">
-                      per {formData.frequency || 'period'}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <div className="font-medium">
-                      1/{formData.maxParticipants || 0} members
-                    </div>
-                    <div className="text-muted-foreground">participants</div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <div className="font-medium">
-                      {formData.startDate 
-                        ? new Date(formData.startDate).toLocaleDateString()
-                        : 'Start date'
-                      }
-                    </div>
-                    <div className="text-muted-foreground">start date</div>
-                  </div>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="end-date">End Date *</Label>
+                <Input
+                  id="end-date"
+                  type="date"
+                  value={formData.endDate}
+                  onChange={(e) => handleInputChange('endDate', e.target.value)}
+                  min={formData.startDate || new Date().toISOString().split('T')[0]}
+                />
               </div>
-            </CardContent>
-          </Card>
 
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Once created, some group details cannot be changed. Please review carefully.
-            </AlertDescription>
-          </Alert>
-        </div>
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Once created, some group details cannot be changed. Please review carefully.
+                </AlertDescription>
+              </Alert>
+
+              <div className="flex gap-2 pt-4">
+                <Button 
+                  type="button" 
+                  onClick={handlePreview}
+                  className="flex-1"
+                >
+                  Preview Group
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => navigate('/groups')}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Preview Modal */}
+      <Dialog open={showPreview} onOpenChange={() => {}}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Group Preview</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            <div>
+              <h4 className="text-xl font-semibold">{formData.name}</h4>
+              <p className="text-muted-foreground mt-1">
+                {formData.description}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                <DollarSign className="h-5 w-5 text-primary" />
+                <div>
+                  <div className="font-medium">
+                    {formatCurrency(parseNumberInput(formData.contributionAmount))}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    per {formData.frequency === 'every' ? 'lump sum' : formData.frequency}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                <Target className="h-5 w-5 text-primary" />
+                <div>
+                  <div className="font-medium">
+                    {formatCurrency(parseNumberInput(formData.targetAmount))}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    target amount
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                <Users className="h-5 w-5 text-primary" />
+                <div>
+                  <div className="font-medium">
+                    {formData.maxParticipants} members
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    maximum participants
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                <Clock className="h-5 w-5 text-primary" />
+                <div>
+                  <div className="font-medium">
+                    {calculatePeriods(formData.startDate, formData.endDate, formData.frequency)}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {formData.frequency === 'every' ? 'payment' : 'payments'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                <Calendar className="h-5 w-5 text-primary" />
+                <div>
+                  <div className="font-medium">
+                    {new Date(formData.startDate).toLocaleDateString()}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    start date
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                <Calendar className="h-5 w-5 text-primary" />
+                <div>
+                  <div className="font-medium">
+                    {new Date(formData.endDate).toLocaleDateString()}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    end date
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-4">
+              <Button 
+                onClick={handleSubmit}
+                disabled={createGroupMutation.isPending}
+                className="flex-1"
+              >
+                {createGroupMutation.isPending ? 'Creating Group...' : 'Create Group'}
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setShowPreview(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
