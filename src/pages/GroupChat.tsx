@@ -22,7 +22,7 @@ const GroupChatPage = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Check if user is group member or creator
-  const { data: membershipData } = useQuery({
+  const { data: membershipData, isLoading: membershipLoading } = useQuery({
     queryKey: ['group-membership', groupId, user?.id],
     queryFn: async () => {
       if (!groupId || !user?.id) return null;
@@ -30,9 +30,9 @@ const GroupChatPage = () => {
       // Check if user is group creator
       const { data: group } = await supabase
         .from('thrift_groups')
-        .select('creator_id, name, description')
+        .select('creator_id, name, description, status')
         .eq('id', groupId)
-        .single();
+        .maybeSingle();
       
       if (group?.creator_id === user.id) {
         return { isCreator: true, isMember: true, group };
@@ -44,7 +44,7 @@ const GroupChatPage = () => {
         .select('id')
         .eq('group_id', groupId)
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
       
       return { 
         isCreator: false, 
@@ -68,7 +68,7 @@ const GroupChatPage = () => {
   }, [membershipData, navigate, toast]);
 
   // Real-time messages
-  const { data: messages, isLoading } = useQuery({
+  const { data: messages, isLoading: messagesLoading } = useQuery({
     queryKey: ['group-messages', groupId],
     queryFn: async () => {
       if (!groupId) return [];
@@ -154,19 +154,67 @@ const GroupChatPage = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  if (!membershipData?.isMember) {
+  if (!membershipData?.isMember && !membershipLoading) {
     return null; // Will redirect
   }
 
+  const isLoading = membershipLoading || messagesLoading;
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-pulse space-y-4">
-          <div className="h-4 bg-muted rounded w-3/4"></div>
-          <div className="h-4 bg-muted rounded w-1/2"></div>
-          <div className="h-4 bg-muted rounded w-2/3"></div>
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full">
+          <div className="w-80 border-r bg-muted/20 animate-pulse">
+            <div className="p-4 border-b">
+              <div className="h-6 bg-muted rounded mb-2"></div>
+              <div className="h-4 bg-muted rounded w-3/4"></div>
+            </div>
+            <div className="p-4 space-y-4">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="h-8 w-8 bg-muted rounded-full"></div>
+                  <div className="flex-1">
+                    <div className="h-4 bg-muted rounded mb-1"></div>
+                    <div className="h-3 bg-muted rounded w-2/3"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <main className="flex-1 flex flex-col">
+            <div className="border-b p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-6 w-6 bg-muted rounded"></div>
+                <div className="flex-1">
+                  <div className="h-6 bg-muted rounded mb-2"></div>
+                  <div className="h-4 bg-muted rounded w-1/2"></div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex-1 flex flex-col">
+              <div className="flex-1 p-4 space-y-4">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className={`flex ${i % 2 === 0 ? 'justify-start' : 'justify-end'}`}>
+                    <div className="max-w-xs p-3 bg-muted rounded-lg animate-pulse">
+                      <div className="h-4 bg-muted-foreground/20 rounded mb-1"></div>
+                      <div className="h-3 bg-muted-foreground/20 rounded w-16"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="border-t p-4">
+                <div className="flex gap-2">
+                  <div className="flex-1 h-10 bg-muted rounded"></div>
+                  <div className="h-10 w-10 bg-muted rounded"></div>
+                </div>
+              </div>
+            </div>
+          </main>
         </div>
-      </div>
+      </SidebarProvider>
     );
   }
 
