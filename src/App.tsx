@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import Verification from "./pages/Verification";
 import Groups from "./pages/Groups";
 import CreateGroup from "./pages/CreateGroup";
+import GroupChatPage from "./pages/GroupChat";
 import Wallet from "./pages/Wallet";
 import Transactions from "./pages/Transactions";
 import Notifications from "./pages/Notifications";
@@ -47,6 +48,11 @@ const App = () => (
             <Route path="/groups/create" element={
               <Layout requireAuth>
                 <CreateGroup />
+              </Layout>
+            } />
+            <Route path="/groups/:groupId/chat" element={
+              <Layout requireAuth>
+                <GroupChatPage />
               </Layout>
             } />
             <Route path="/wallet" element={

@@ -1,0 +1,302 @@
+import { useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarTrigger,
+  useSidebar,
+} from '@/components/ui/sidebar';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { useToast } from '@/hooks/use-toast';
+import { 
+  Users, 
+  Shield, 
+  AlertTriangle, 
+  Ban, 
+  MoreVertical,
+  Clock,
+  DollarSign
+} from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { ReportUserDialog } from './ReportUserDialog';
+
+interface GroupChatSidebarProps {
+  groupId: string;
+  isCreator: boolean;
+}
+
+export function GroupChatSidebar({ groupId, isCreator }: GroupChatSidebarProps) {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { state } = useSidebar();
+  const collapsed = state === "collapsed";
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
+
+  const { data: groupMembers } = useQuery({
+    queryKey: ['group-members', groupId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('group_members')
+        .select(`
+          id,
+          user_id,
+          joined_at,
+          payout_position,
+          profiles (
+            first_name,
+            last_name,
+            email,
+            is_frozen
+          )
+        `)
+        .eq('group_id', groupId)
+        .order('joined_at');
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!groupId
+  });
+
+  const { data: groupInfo } = useQuery({
+    queryKey: ['group-info', groupId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('thrift_groups')
+        .select('name, current_participants, max_participants')
+        .eq('id', groupId)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!groupId
+  });
+
+  const freezeUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          is_frozen: true,
+          frozen_at: new Date().toISOString(),
+          frozen_reason: 'Reported by group admin'
+        })
+        .eq('id', userId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "User Frozen",
+        description: "User access has been suspended.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['group-members', groupId] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to freeze user",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const unfreezeUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          is_frozen: false,
+          frozen_at: null,
+          frozen_reason: null
+        })
+        .eq('id', userId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "User Unfrozen",
+        description: "User access has been restored.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['group-members', groupId] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to unfreeze user",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleReportUser = (userId: string) => {
+    setSelectedUserId(userId);
+    setReportDialogOpen(true);
+  };
+
+  const getInitials = (firstName?: string, lastName?: string) => {
+    return `${firstName?.[0] || ''}${lastName?.[0] || ''}`;
+  };
+
+  const getStatusColor = (member: any) => {
+    if (member.profiles?.is_frozen) return 'bg-destructive text-destructive-foreground';
+    if (member.user_id === user?.id) return 'bg-primary text-primary-foreground';
+    return 'bg-muted text-muted-foreground';
+  };
+
+  return (
+    <>
+      <Sidebar className={collapsed ? "w-14" : "w-80"}>
+        <SidebarHeader className="border-b p-4">
+          <div className="flex items-center gap-3">
+            <SidebarTrigger />
+            {!collapsed && (
+              <div className="flex-1">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Group Members
+                </h3>
+                {groupInfo && (
+                  <p className="text-sm text-muted-foreground">
+                    {groupInfo.current_participants}/{groupInfo.max_participants} members
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </SidebarHeader>
+
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel className={collapsed ? "sr-only" : ""}>
+              Active Members
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <ScrollArea className="flex-1">
+                <div className="space-y-2 p-2">
+                  {groupMembers?.map((member: any) => (
+                    <div
+                      key={member.id}
+                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50"
+                    >
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback className={getStatusColor(member)}>
+                          {getInitials(member.profiles?.first_name, member.profiles?.last_name)}
+                        </AvatarFallback>
+                      </Avatar>
+
+                      {!collapsed && (
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium truncate">
+                              {member.profiles?.first_name} {member.profiles?.last_name}
+                            </p>
+                            {member.user_id === user?.id && (
+                              <Badge variant="outline" className="text-xs">You</Badge>
+                            )}
+                            {member.profiles?.is_frozen && (
+                              <Badge variant="destructive" className="text-xs">
+                                <Ban className="h-3 w-3 mr-1" />
+                                Frozen
+                              </Badge>
+                            )}
+                          </div>
+                          
+                          {isCreator && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <p className="text-xs text-muted-foreground truncate">
+                                {member.profiles?.email}
+                              </p>
+                              
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                                    <MoreVertical className="h-3 w-3" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    onClick={() => handleReportUser(member.user_id)}
+                                    className="text-yellow-600"
+                                  >
+                                    <AlertTriangle className="h-4 w-4 mr-2" />
+                                    Report User
+                                  </DropdownMenuItem>
+                                  
+                                  {member.profiles?.is_frozen ? (
+                                    <DropdownMenuItem
+                                      onClick={() => unfreezeUserMutation.mutate(member.user_id)}
+                                      className="text-green-600"
+                                    >
+                                      <Shield className="h-4 w-4 mr-2" />
+                                      Unfreeze User
+                                    </DropdownMenuItem>
+                                  ) : (
+                                    <DropdownMenuItem
+                                      onClick={() => freezeUserMutation.mutate(member.user_id)}
+                                      className="text-red-600"
+                                    >
+                                      <Ban className="h-4 w-4 mr-2" />
+                                      Freeze User
+                                    </DropdownMenuItem>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          {isCreator && !collapsed && (
+            <SidebarGroup>
+              <SidebarGroupLabel>Admin Actions</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <div className="p-2 space-y-2">
+                  <Button variant="outline" size="sm" className="w-full justify-start">
+                    <DollarSign className="h-4 w-4 mr-2" />
+                    View Contributions
+                  </Button>
+                  <Button variant="outline" size="sm" className="w-full justify-start">
+                    <Clock className="h-4 w-4 mr-2" />
+                    Payment Schedule
+                  </Button>
+                </div>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
+        </SidebarContent>
+      </Sidebar>
+
+      <ReportUserDialog
+        open={reportDialogOpen}
+        onOpenChange={setReportDialogOpen}
+        groupId={groupId}
+        userId={selectedUserId}
+      />
+    </>
+  );
+}

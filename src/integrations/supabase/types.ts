@@ -186,8 +186,11 @@ export type Database = {
           created_at: string
           email: string
           first_name: string
+          frozen_at: string | null
+          frozen_reason: string | null
           id: string
           is_active: boolean
+          is_frozen: boolean
           last_name: string
           phone: string | null
           role: Database["public"]["Enums"]["app_role"]
@@ -198,8 +201,11 @@ export type Database = {
           created_at?: string
           email: string
           first_name: string
+          frozen_at?: string | null
+          frozen_reason?: string | null
           id: string
           is_active?: boolean
+          is_frozen?: boolean
           last_name: string
           phone?: string | null
           role?: Database["public"]["Enums"]["app_role"]
@@ -210,8 +216,11 @@ export type Database = {
           created_at?: string
           email?: string
           first_name?: string
+          frozen_at?: string | null
+          frozen_reason?: string | null
           id?: string
           is_active?: boolean
+          is_frozen?: boolean
           last_name?: string
           phone?: string | null
           role?: Database["public"]["Enums"]["app_role"]
@@ -319,6 +328,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_reports: {
+        Row: {
+          created_at: string
+          description: string | null
+          group_id: string
+          id: string
+          report_type: string
+          reported_user_id: string
+          reporter_id: string
+          resolution_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          group_id: string
+          id?: string
+          report_type: string
+          reported_user_id: string
+          reporter_id: string
+          resolution_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          group_id?: string
+          id?: string
+          report_type?: string
+          reported_user_id?: string
+          reporter_id?: string
+          resolution_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Relationships: []
       }
       verification: {
         Row: {

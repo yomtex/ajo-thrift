@@ -147,11 +147,13 @@ const Groups = () => {
                   View Details
                 </Button>
               </GroupDetailsModal>
-              <GroupDetailsModal group={group} isMember={isMember}>
-                <Button variant="outline" size="icon">
-                  <MessageCircle className="h-4 w-4" />
-                </Button>
-              </GroupDetailsModal>
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={() => navigate(`/groups/${group.id}/chat`)}
+              >
+                <MessageCircle className="h-4 w-4" />
+              </Button>
             </>
           ) : (
             <>
