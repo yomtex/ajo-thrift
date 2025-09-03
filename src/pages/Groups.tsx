@@ -36,7 +36,8 @@ const Groups = () => {
             status,
             max_participants,
             current_participants,
-            created_at
+            created_at,
+            creator_id
           )
         `)
         .eq('user_id', user.id);

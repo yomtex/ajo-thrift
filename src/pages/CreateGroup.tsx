@@ -175,7 +175,7 @@ const CreateGroup = () => {
   const createGroupMutation = useMutation({
     mutationFn: async (groupData: typeof formData) => {
       if (!user?.id) throw new Error('User not authenticated');
-      
+      console.log("👤 Creating group by user:", user.id);
       const { data, error } = await supabase
         .from('thrift_groups')
         .insert({

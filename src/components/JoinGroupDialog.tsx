@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { AlertCircle, Users, DollarSign, Calendar, Info } from 'lucide-react';
+import { AlertCircle, Users, DollarSign, Calendar } from 'lucide-react';
 
 interface JoinGroupDialogProps {
   group: any;
@@ -28,13 +28,54 @@ const JoinGroupDialog = ({ group, children }: JoinGroupDialogProps) => {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState('');
+  const [hasReachedLimit, setHasReachedLimit] = useState(false);
+
+  // 🔎 check contribution limit when dialog opens
+  useEffect(() => {
+    const checkLimit = async () => {
+      if (!user?.id || !open) return;
+
+      const { data: contributions, error } = await supabase
+        .from("contributions")
+        .select("group_id")
+        .eq("user_id", user.id)
+        .eq("status", "pending");
+
+      if (error) {
+        console.error("Error checking contributions:", error);
+        return;
+      }
+
+      const activeGroupIds = Array.from(new Set(contributions?.map(c => c.group_id) || []));
+      setHasReachedLimit(activeGroupIds.length >= 3);
+    };
+
+    checkLimit();
+  }, [user, open]);
 
   const joinGroupMutation = useMutation({
     mutationFn: async () => {
       if (!user?.id) throw new Error('User not authenticated');
+      console.log("👤 Join request from user ID:", user.id, "for group:", group.id);
+
+      // 🚦 double check server-side before inserting
+      const { data: contributions, error: contribError } = await supabase
+        .from("contributions")
+        .select("group_id")
+        .eq("user_id", user.id)
+        .eq("status", "pending");
+
+      if (contribError) throw contribError;
+
+      const activeGroupIds = Array.from(new Set(contributions?.map(c => c.group_id) || []));
+      if (activeGroupIds.length >= 3) {
+        throw new Error(
+          "You already have ongoing contributions in 3 groups. Complete at least one before joining another."
+        );
+      }
 
       const { error } = await supabase
-        .from('group_join_requests')
+        .from("group_join_requests")
         .insert({
           user_id: user.id,
           group_id: group.id,
@@ -46,14 +87,15 @@ const JoinGroupDialog = ({ group, children }: JoinGroupDialogProps) => {
     onSuccess: () => {
       toast({
         title: "Join Request Sent",
-        description: "Your request to join the group has been sent to the group admin for approval.",
+        description:
+          "Your request to join the group has been sent to the group admin for approval.",
       });
-      queryClient.invalidateQueries({ queryKey: ['available-groups'] });
+      queryClient.invalidateQueries({ queryKey: ["available-groups"] });
       setOpen(false);
-      setMessage('');
+      setMessage("");
     },
     onError: (error: any) => {
-      if (error.code === '23505') {
+      if (error.code === "23505") {
         toast({
           title: "Already Requested",
           description: "You have already sent a join request for this group.",
@@ -62,22 +104,24 @@ const JoinGroupDialog = ({ group, children }: JoinGroupDialogProps) => {
       } else {
         toast({
           title: "Error",
-          description: error.message || "Failed to send join request",
+          description:
+            error.message ||
+            "Failed to send join request. Please check your contributions.",
           variant: "destructive",
         });
       }
-    }
+    },
   });
+
+  const handleJoin = () => {
+    joinGroupMutation.mutate();
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
       currency: 'NGN',
     }).format(amount);
-  };
-
-  const handleJoin = () => {
-    joinGroupMutation.mutate();
   };
 
   return (
@@ -98,92 +142,99 @@ const JoinGroupDialog = ({ group, children }: JoinGroupDialogProps) => {
 
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <div className="space-y-6">
-          {/* Group Summary */}
-          <Card>
-            <CardContent className="p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Group Name:</span>
-                <span className="text-sm">{group.name}</span>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium flex items-center gap-1">
-                  <DollarSign className="h-3 w-3" />
-                  Contribution:
-                </span>
-                <span className="text-sm font-medium text-primary">
-                  {formatCurrency(group.contribution_amount)}
-                </span>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium flex items-center gap-1">
-                  <Calendar className="h-3 w-3" />
-                  Frequency:
-                </span>
-                <span className="text-sm">{group.frequency}</span>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium flex items-center gap-1">
-                  <Users className="h-3 w-3" />
-                  Members:
-                </span>
-                <span className="text-sm">
-                  {group.current_participants || 0}/{group.max_participants}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Important Information */}
-          <Card className="border-warning/50 bg-warning/5">
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-warning mt-0.5" />
-                <div className="space-y-2">
-                  <h4 className="font-medium text-warning">Important Information</h4>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• By joining, you commit to regular contributions</li>
-                    <li>• Payment schedule must be followed strictly</li>
-                    <li>• Group admin will review your request</li>
-                    <li>• You'll be notified once approved or rejected</li>
-                  </ul>
+            {/* Group Summary */}
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Group Name:</span>
+                  <span className="text-sm">{group.name}</span>
                 </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium flex items-center gap-1">
+                    <DollarSign className="h-3 w-3" />
+                    Contribution:
+                  </span>
+                  <span className="text-sm font-medium text-primary">
+                    {formatCurrency(group.contribution_amount)}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    Frequency:
+                  </span>
+                  <span className="text-sm">{group.frequency}</span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium flex items-center gap-1">
+                    <Users className="h-3 w-3" />
+                    Members:
+                  </span>
+                  <span className="text-sm">
+                    {group.current_participants || 0}/{group.max_participants}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Important Information */}
+            <Card className="border-warning/50 bg-warning/5">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-warning mt-0.5" />
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-warning">Important Information</h4>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      <li>• By joining, you commit to regular contributions</li>
+                      <li>• Payment schedule must be followed strictly</li>
+                      <li>• Group admin will review your request</li>
+                      <li>• You'll be notified once approved or rejected</li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Optional Message */}
+            <div className="space-y-2">
+              <Label htmlFor="join-message">
+                Message to Group Admin (Optional)
+              </Label>
+              <Textarea
+                id="join-message"
+                placeholder="Tell the group admin why you'd like to join..."
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                rows={3}
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col gap-2">
+              {hasReachedLimit && (
+                <p className="text-sm text-red-500">
+                  ⚠️ You already have ongoing contributions in 3 groups. Complete one before joining another.
+                </p>
+              )}
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setOpen(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleJoin}
+                  disabled={joinGroupMutation.isPending || hasReachedLimit}
+                  className="flex-1"
+                >
+                  {joinGroupMutation.isPending ? "Sending..." : "Send Request"}
+                </Button>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Optional Message */}
-          <div className="space-y-2">
-            <Label htmlFor="join-message">
-              Message to Group Admin (Optional)
-            </Label>
-            <Textarea
-              id="join-message"
-              placeholder="Tell the group admin why you'd like to join..."
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              rows={3}
-            />
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={() => setOpen(false)}
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleJoin}
-              disabled={joinGroupMutation.isPending}
-              className="flex-1"
-            >
-              {joinGroupMutation.isPending ? 'Sending...' : 'Send Request'}
-            </Button>
             </div>
           </div>
         </div>

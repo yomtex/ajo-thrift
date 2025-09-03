@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect  } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -39,6 +39,17 @@ const GroupDetailsModal = ({ group, children, isMember }: GroupDetailsModalProps
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
 
+useEffect(() => {
+  if (open) {
+    console.log('User ID:', user?.id, 'Group Creator ID:', group.creator_id);
+
+    console.log("👤 User opened group details:", {
+      userId: user?.id,
+      groupId: group.id,
+    });
+  }
+}, [open, user?.id, group.id]);
+
   const { data: groupMembers } = useQuery({
     queryKey: ['group-members', group.id],
     queryFn: async () => {
@@ -77,6 +88,7 @@ const GroupDetailsModal = ({ group, children, isMember }: GroupDetailsModalProps
     },
     enabled: open && user?.id === group.creator_id
   });
+
 
   const approveJoinRequest = useMutation({
     mutationFn: async ({ requestId, userId }: { requestId: string; userId: string }) => {

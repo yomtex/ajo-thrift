@@ -1,73 +1,177 @@
-# Welcome to your Lovable project
+Ajo Thrift
 
-## Project info
+Ajo Thrift is a community-based savings and investment platform that allows users to create, join, and manage group savings circles (Ajo/Thrift). It provides real-time communication, member management, and contribution tracking for an efficient and transparent group savings experience.
 
-**URL**: https://lovable.dev/projects/8b602062-9bc4-46a9-ac47-1de3218af064
+Features
 
-## How can I edit this code?
+User Authentication: Secure login/signup using Supabase.
 
-There are several ways of editing your application.
+Group Management: Create, view, and manage groups.
 
-**Use Lovable**
+Join Requests: Approve or reject member requests (for group creators).
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/8b602062-9bc4-46a9-ac47-1de3218af064) and start prompting.
+Member Dashboard: Track contributions, payout positions, and group status.
 
-Changes made via Lovable will be committed automatically to this repo.
+Real-time Chat: Integrated chat module for group members.
 
-**Use your preferred IDE**
+Financial Overview: Track contributions, frequency, target amounts, and current participants.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Responsive Design: Mobile-first and fully responsive UI using Tailwind CSS and Radix UI.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+Technologies Used
 
-Follow these steps:
+Frontend: React, TypeScript, Tailwind CSS
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+UI Components: Radix UI, Lucide Icons
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+Backend / Database: Supabase (PostgreSQL)
 
-# Step 3: Install the necessary dependencies.
-npm i
+State Management & Server Data: React Query (TanStack Query)
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+Notifications: Custom toast notifications
+
+Screenshots & Demo
+Group Overview
+
+
+Displays group name, status, contribution amount, frequency, current participants, and target amount.
+
+Members Tab
+
+
+Shows all current members along with join date and payout position.
+
+Join Requests Tab
+
+
+Group creators can approve or reject pending join requests.
+
+Chat Module
+
+
+Allows real-time messaging between group members.
+
+Architecture & Flow
+flowchart TD
+    A[User] -->|Sign Up / Login| B[Supabase Auth]
+    B --> C[Dashboard]
+    C --> D[View Available Groups]
+    C --> E[Create Group]
+    D --> F[Send Join Request]
+    E --> G[Group Overview]
+    G --> H[Approve / Reject Requests]
+    G --> I[Member List]
+    G --> J[Group Chat]
+    F --> H
+
+
+Users authenticate via Supabase Auth.
+
+They can view available groups or create their own.
+
+Join requests are managed by the group creator.
+
+Members interact via chat and track contributions.
+
+Getting Started
+Prerequisites
+
+Node.js (v18+)
+
+npm or yarn
+
+Supabase project for database and authentication
+
+Installation
+
+Clone the repository:
+
+git clone https://github.com/your-username/ajo-thrift.git
+cd ajo-thrift
+
+
+Install dependencies:
+
+npm install
+# or
+yarn install
+
+
+Setup environment variables:
+
+Create a .env.local file:
+
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+
+
+Run the development server:
+
 npm run dev
-```
+# or
+yarn dev
 
-**Edit a file directly in GitHub**
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Visit http://localhost:3000
+ to access the app.
 
-**Use GitHub Codespaces**
+Project Structure
+/src
+ ├─ /components       # UI components (Cards, Buttons, Dialogs)
+ ├─ /hooks            # Custom hooks (useAuth, useToast)
+ ├─ /integrations     # Supabase client & integrations
+ ├─ /pages            # Next.js pages
+ ├─ /services         # API & Supabase queries/mutations
+ └─ /types            # TypeScript types and interfaces
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Usage
 
-## What technologies are used for this project?
+Create Group: Enter group details such as name, contribution amount, and frequency.
 
-This project is built with:
+Join Group: Browse available groups and send a join request.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Approve Requests: Group creators can approve/reject pending requests.
 
-## How can I deploy this project?
+Contribute: Track and contribute to group savings.
 
-Simply open [Lovable](https://lovable.dev/projects/8b602062-9bc4-46a9-ac47-1de3218af064) and click on Share -> Publish.
+Chat: Use the chat feature for communication between members.
 
-## Can I connect a custom domain to my Lovable project?
+Contributing
 
-Yes, you can!
+Fork the repository
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+Create a new branch: git checkout -b feature/your-feature
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Make your changes
+
+Commit your changes: git commit -m "Add feature"
+
+Push to the branch: git push origin feature/your-feature
+
+Open a Pull Request
+
+License
+
+This project is licensed under the MIT License.
+
+Contact
+
+Email: ganiutoyeeb31@gmail.com
+
+GitHub: https://github.com/yomtex
+
+This README now includes:
+
+Features
+
+Tech stack
+
+Screenshots & demo
+
+Architecture flowchart
+
+Installation & usage
+
+Contribution guide
+
+License & contact info
