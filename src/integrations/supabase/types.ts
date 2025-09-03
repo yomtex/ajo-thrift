@@ -332,7 +332,15 @@ export type Database = {
         Args: { user_id: string }
         Returns: boolean
       }
+      user_is_group_creator_sd: {
+        Args: { group_id_param: string; user_id_param: string }
+        Returns: boolean
+      }
       user_is_group_member: {
+        Args: { group_id_param: string; user_id_param: string }
+        Returns: boolean
+      }
+      user_is_group_member_sd: {
         Args: { group_id_param: string; user_id_param: string }
         Returns: boolean
       }
