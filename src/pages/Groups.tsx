@@ -6,9 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Plus, Users, Calendar, DollarSign, MapPin } from 'lucide-react';
+import { Search, Plus, Users, Calendar, DollarSign, MessageCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import GroupDetailsModal from '@/components/GroupDetailsModal';
+import JoinGroupDialog from '@/components/JoinGroupDialog';
 
 const Groups = () => {
   const { user } = useAuth();
@@ -103,7 +105,9 @@ const Groups = () => {
         <div className="flex items-start justify-between">
           <div>
             <CardTitle className="text-lg">{group.name}</CardTitle>
-            <CardDescription className="mt-1">{group.description}</CardDescription>
+            <CardDescription className="mt-1">
+              {group.description || 'No description provided'}
+            </CardDescription>
           </div>
           <Badge className={getStatusColor(group.status)}>
             {group.status}
@@ -119,15 +123,15 @@ const Groups = () => {
               <div className="text-muted-foreground">per {group.frequency}</div>
             </div>
           </div>
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <div className="font-medium">
-                  {group.current_participants || 0}/{group.max_participants}
-                </div>
-                <div className="text-muted-foreground">members</div>
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <div className="font-medium">
+                {group.current_participants || 0}/{group.max_participants}
               </div>
+              <div className="text-muted-foreground">members</div>
             </div>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 text-sm">
@@ -137,17 +141,30 @@ const Groups = () => {
 
         <div className="flex gap-2">
           {isMember ? (
-            <Button variant="outline" className="flex-1">
-              View Details
-            </Button>
+            <>
+              <GroupDetailsModal group={group} isMember={isMember}>
+                <Button variant="outline" className="flex-1">
+                  View Details
+                </Button>
+              </GroupDetailsModal>
+              <GroupDetailsModal group={group} isMember={isMember}>
+                <Button variant="outline" size="icon">
+                  <MessageCircle className="h-4 w-4" />
+                </Button>
+              </GroupDetailsModal>
+            </>
           ) : (
             <>
-              <Button variant="outline" className="flex-1">
-                View Details
-              </Button>
-              <Button className="flex-1">
-                Join Group
-              </Button>
+              <GroupDetailsModal group={group} isMember={isMember}>
+                <Button variant="outline" className="flex-1">
+                  View Details
+                </Button>
+              </GroupDetailsModal>
+              <JoinGroupDialog group={group}>
+                <Button className="flex-1">
+                  Join Group
+                </Button>
+              </JoinGroupDialog>
             </>
           )}
         </div>
