@@ -83,36 +83,48 @@ const CreateGroup = () => {
   const calculateExpectedTotal = (): number => {
     const periods = calculatePeriods(formData.startDate, formData.endDate, formData.frequency);
     const contributionAmount = parseNumberInput(formData.contributionAmount);
-    return periods * contributionAmount;
+    const participants = parseInt(formData.maxParticipants) || 1;
+    // In thrift: total pool = contribution × periods × participants
+    // Each participant gets: total_pool / participants per payout
+    return periods * contributionAmount * participants;
+  };
+
+  // Calculate what each participant should receive (payout amount)
+  const calculatePayoutAmount = (): number => {
+    const totalPool = calculateExpectedTotal();
+    const participants = parseInt(formData.maxParticipants) || 1;
+    return totalPool / participants;
   };
 
   // Generate helper suggestions when amounts don't match
   const generateSuggestions = () => {
-    const expectedTotal = calculateExpectedTotal();
+    const payoutAmount = calculatePayoutAmount();
     const targetAmount = parseNumberInput(formData.targetAmount);
     const contributionAmount = parseNumberInput(formData.contributionAmount);
     const periods = calculatePeriods(formData.startDate, formData.endDate, formData.frequency);
+    const participants = parseInt(formData.maxParticipants) || 1;
     
     const suggestions = [];
 
-    // Option 1: Adjust target amount to match expected total
+    // Option 1: Adjust target amount to match payout amount (what each participant gets)
     suggestions.push({
       id: 'adjust-target',
       label: 'Adjust Target Amount',
-      description: `Set target amount to ${formatCurrency(expectedTotal)} to match your current settings`,
+      description: `Set target amount to ${formatCurrency(payoutAmount)} (what each participant receives per payout cycle)`,
       updates: {
-        targetAmount: formatNumberInput(Math.round(expectedTotal).toString())
+        targetAmount: formatNumberInput(Math.round(payoutAmount).toString())
       }
     });
 
-    // Option 2: Adjust contribution amount to match target
+    // Option 2: Adjust contribution amount to match target (per participant)
     if (periods > 0) {
-      const newContribution = Math.round(targetAmount / periods);
+      const requiredTotalPool = targetAmount * participants;
+      const newContribution = Math.round(requiredTotalPool / (periods * participants));
       if (newContribution >= 1000) {
         suggestions.push({
           id: 'adjust-contribution',
           label: 'Adjust Contribution Amount',
-          description: `Set contribution to ${formatCurrency(newContribution)} per ${formData.frequency === 'every' ? 'lump sum' : formData.frequency} to reach your target`,
+          description: `Set contribution to ${formatCurrency(newContribution)} per ${formData.frequency === 'every' ? 'lump sum' : formData.frequency} to reach ${formatCurrency(targetAmount)} target`,
           updates: {
             contributionAmount: formatNumberInput(newContribution.toString())
           }
@@ -120,21 +132,32 @@ const CreateGroup = () => {
       }
     }
 
-    // Option 3: Adjust date range for monthly frequency
-    if (formData.frequency === 'monthly' && contributionAmount > 0) {
-      const targetPeriods = Math.ceil(targetAmount / contributionAmount);
-      const startDate = new Date(formData.startDate);
-      const newEndDate = new Date(startDate);
-      newEndDate.setMonth(startDate.getMonth() + targetPeriods);
+    // Option 3: Adjust date range to match target amount
+    if (contributionAmount > 0 && formData.frequency !== 'every') {
+      const requiredTotalPool = targetAmount * participants;
+      const requiredPeriods = Math.ceil(requiredTotalPool / (contributionAmount * participants));
       
-      suggestions.push({
-        id: 'adjust-dates',
-        label: 'Adjust Date Range',
-        description: `Extend to ${targetPeriods} months (ending ${newEndDate.toLocaleDateString()}) to reach your target`,
-        updates: {
-          endDate: newEndDate.toISOString().split('T')[0]
+      if (requiredPeriods > 0) {
+        const startDate = new Date(formData.startDate);
+        const newEndDate = new Date(startDate);
+        
+        if (formData.frequency === 'daily') {
+          newEndDate.setDate(startDate.getDate() + requiredPeriods);
+        } else if (formData.frequency === 'weekly') {
+          newEndDate.setDate(startDate.getDate() + (requiredPeriods * 7));
+        } else if (formData.frequency === 'monthly') {
+          newEndDate.setMonth(startDate.getMonth() + requiredPeriods);
         }
-      });
+        
+        suggestions.push({
+          id: 'adjust-dates',
+          label: 'Adjust Date Range',
+          description: `Extend to ${requiredPeriods} ${formData.frequency === 'monthly' ? 'months' : formData.frequency === 'weekly' ? 'weeks' : 'days'} (ending ${newEndDate.toLocaleDateString()}) to reach ${formatCurrency(targetAmount)} target`,
+          updates: {
+            endDate: newEndDate.toISOString().split('T')[0]
+          }
+        });
+      }
     }
 
     return suggestions;
@@ -255,11 +278,11 @@ const CreateGroup = () => {
       return;
     }
 
-    // Validate target amount matches expected total
-    const expectedTotal = calculateExpectedTotal();
+    // Validate target amount matches expected payout per participant
+    const payoutAmount = calculatePayoutAmount();
     const targetAmount = parseNumberInput(formData.targetAmount);
     
-    if (Math.abs(expectedTotal - targetAmount) > 0.01) {
+    if (Math.abs(payoutAmount - targetAmount) > 0.01) {
       const suggestions = generateSuggestions();
       setHelperSuggestions(suggestions);
       setShowHelper(true);
@@ -387,8 +410,8 @@ const CreateGroup = () => {
                     onChange={(e) => handleInputChange('targetAmount', e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Expected: {formData.contributionAmount && formData.startDate && formData.endDate && formData.frequency 
-                      ? formatCurrency(calculateExpectedTotal())
+                    Expected payout: {formData.contributionAmount && formData.startDate && formData.endDate && formData.frequency && formData.maxParticipants
+                      ? formatCurrency(calculatePayoutAmount())
                       : '₦0'}
                   </p>
                 </div>
