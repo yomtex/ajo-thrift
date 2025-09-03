@@ -261,7 +261,7 @@ const GroupChatPage = () => {
             {/* Messages Area */}
             <div className="flex-1 overflow-hidden">
               <ScrollArea className="h-full">
-                <div className="p-4 pb-20">
+                <div className="p-4 pb-24">
                   {messages && messages.length > 0 ? (
                     <div className="space-y-4">
                       {messages.map((message: any) => (

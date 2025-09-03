@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Sidebar,
@@ -26,7 +27,8 @@ import {
   Clock,
   DollarSign,
   Shuffle,
-  HandCoins
+  HandCoins,
+  Home
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -49,6 +51,7 @@ export function GroupChatSidebar({ groupId, isCreator }: GroupChatSidebarProps) 
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
@@ -196,6 +199,24 @@ export function GroupChatSidebar({ groupId, isCreator }: GroupChatSidebarProps) 
         </SidebarHeader>
 
         <SidebarContent>
+          {/* Home Button */}
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <div className="p-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full justify-center md:justify-start"
+                  onClick={() => navigate('/dashboard')}
+                  title="Go to Dashboard"
+                >
+                  <Home className="h-4 w-4 md:mr-2" />
+                  <span className="hidden md:inline">Dashboard</span>
+                </Button>
+              </div>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
           <SidebarGroup>
             <SidebarGroupLabel className="hidden md:block">
               Active Members
