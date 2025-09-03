@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 const Groups = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
 
   const { data: myGroups, isLoading: myGroupsLoading } = useQuery({
@@ -162,7 +164,7 @@ const Groups = () => {
             Join or create savings groups with your community
           </p>
         </div>
-        <Button>
+        <Button onClick={() => navigate('/groups/create')}>
           <Plus className="mr-2 h-4 w-4" />
           Create Group
         </Button>
@@ -202,8 +204,8 @@ const Groups = () => {
                       You haven't joined any thrift groups. Start by discovering or creating one!
                     </p>
                     <div className="flex gap-2 justify-center">
-                      <Button variant="outline">Discover Groups</Button>
-                      <Button>Create Group</Button>
+                      <Button variant="outline" onClick={() => navigate('/groups/create')}>Create Group</Button>
+                      <Button onClick={() => navigate('/groups/create')}>Create Group</Button>
                     </div>
                   </CardContent>
                 </Card>

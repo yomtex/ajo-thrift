@@ -40,11 +40,13 @@ const Verification = () => {
     mutationFn: async (bvnNumber: string) => {
       if (!user?.id) throw new Error('User not found');
       
+      // For testing: automatically approve any 10-digit BVN
       const { data, error } = await supabase
         .from('verification')
         .update({ 
           bvn: bvnNumber,
-          verification_status: 'pending',
+          verification_status: 'approved', // Auto-approve for testing
+          verified_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
         .eq('user_id', user.id)
@@ -56,8 +58,8 @@ const Verification = () => {
     },
     onSuccess: () => {
       toast({
-        title: "BVN Submitted",
-        description: "Your BVN has been submitted for verification.",
+        title: "BVN Verified!",
+        description: "Your BVN has been automatically verified for testing.",
       });
       queryClient.invalidateQueries({ queryKey: ['verification'] });
       setBvn('');
@@ -65,7 +67,7 @@ const Verification = () => {
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to submit BVN",
+        description: error.message || "Failed to verify BVN",
         variant: "destructive",
       });
     }
