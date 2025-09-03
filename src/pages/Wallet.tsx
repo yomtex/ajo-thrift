@@ -11,6 +11,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { formatCurrency } from '@/lib/utils';
+import { usePaystackPayment } from 'react-paystack';
 
 const Wallet = () => {
   const { user } = useAuth();
@@ -57,8 +58,6 @@ const Wallet = () => {
     mutationFn: async (amount: number) => {
       if (!user?.id || !wallet) throw new Error('User or wallet not found');
       
-      // This would typically integrate with a payment processor
-      // For now, we'll simulate a successful funding
       const newBalance = wallet.balance + amount;
       
       const { data, error } = await supabase
@@ -70,7 +69,7 @@ const Wallet = () => {
           category: 'wallet_topup',
           amount,
           balance_after: newBalance,
-          description: 'Wallet funding'
+          description: 'Wallet funding via Paystack'
         })
         .select()
         .single();
@@ -154,18 +153,43 @@ const Wallet = () => {
     }
   });
 
+  // Paystack configuration
+  const paystackConfig = {
+    reference: `wallet_${Date.now()}`,
+    email: user?.email || '',
+    amount: Math.round(parseFloat(fundAmount || '0') * 100), // Convert to kobo
+    publicKey: 'pk_test_aa9503c68e6db9cc9f49e0b8e4c96d0f27cf7e76', // Test public key
+  };
+
+  const initializePayment = usePaystackPayment(paystackConfig);
+
   const handleFund = (e: React.FormEvent) => {
     e.preventDefault();
     const amount = parseFloat(fundAmount);
-    if (amount > 0 && amount <= 1000000) {
-      fundWalletMutation.mutate(amount);
-    } else {
+    
+    // Set reasonable limits for testing: ₦100 to ₦50,000
+    if (amount < 100 || amount > 50000) {
       toast({
         title: "Invalid Amount",
-        description: "Please enter a valid amount between ₦1 and ₦1,000,000",
+        description: "Please enter an amount between ₦100 and ₦50,000 for testing",
         variant: "destructive",
       });
+      return;
     }
+
+    initializePayment({
+      onSuccess: (reference) => {
+        console.log('Payment successful:', reference);
+        fundWalletMutation.mutate(amount);
+      },
+      onClose: () => {
+        toast({
+          title: "Payment Cancelled",
+          description: "Payment was cancelled by user",
+          variant: "destructive",
+        });
+      },
+    });
   };
 
   const handleWithdraw = (e: React.FormEvent) => {
@@ -269,27 +293,30 @@ const Wallet = () => {
                     <Input
                       id="fund-amount"
                       type="number"
-                      placeholder="Enter amount"
+                      placeholder="Enter amount (₦100 - ₦50,000)"
                       value={fundAmount}
                       onChange={(e) => setFundAmount(e.target.value)}
-                      min="1"
-                      max="1000000"
-                      step="0.01"
+                      min="100"
+                      max="50000"
+                      step="1"
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Testing limits: ₦100 - ₦50,000
+                    </p>
                   </div>
 
                   <Alert>
                     <AlertDescription>
-                      <strong>Demo Mode:</strong> This is a simulation. In production, this would integrate with real payment processors.
+                      <strong>Paystack Test Mode:</strong> Using test keys for secure testing. No real money will be charged.
                     </AlertDescription>
                   </Alert>
 
                   <Button 
                     type="submit" 
                     className="w-full"
-                    disabled={!fundAmount || fundWalletMutation.isPending}
+                    disabled={!fundAmount || fundWalletMutation.isPending || parseFloat(fundAmount || '0') < 100 || parseFloat(fundAmount || '0') > 50000}
                   >
-                    {fundWalletMutation.isPending ? 'Processing...' : 'Fund Wallet'}
+                    {fundWalletMutation.isPending ? 'Processing...' : 'Pay with Paystack'}
                   </Button>
                 </form>
               </CardContent>
