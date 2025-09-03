@@ -51,26 +51,27 @@ export function PaymentScheduleDialog({
           )
         `)
         .eq('id', groupId)
-        .single();
+        .maybeSingle();
       
       if (error) throw error;
+      if (!data) return null;
 
       // Get profiles separately
-      if (data?.group_members && data.group_members.length > 0) {
-        const userIds = data.group_members.map(m => m.user_id);
+      if (data.group_members && data.group_members.length > 0) {
+        const userIds = data.group_members.map((m: any) => m.user_id);
         const { data: profiles } = await supabase
           .from('profiles')
           .select('id, first_name, last_name, email')
           .in('id', userIds);
 
         // Merge members with profiles
-        data.group_members = data.group_members.map(member => ({
+        (data as any).group_members = data.group_members.map((member: any) => ({
           ...member,
           profiles: profiles?.find(p => p.id === member.user_id)
         }));
       }
 
-      return data;
+      return data as any;
     },
     enabled: !!groupId && open
   });
