@@ -20,23 +20,25 @@ const Groups = () => {
       const { data, error } = await supabase
         .from('group_members')
         .select(`
-          *,
+          id,
+          joined_at,
+          payout_position,
           thrift_groups (
             id,
             name,
             description,
-            target_amount,
             contribution_amount,
             frequency,
             status,
-            max_members,
+            max_participants,
+            current_participants,
             created_at
           )
         `)
         .eq('user_id', user.id);
       
       if (error) throw error;
-      return data;
+      return data || [];
     },
     enabled: !!user?.id
   });
@@ -44,11 +46,22 @@ const Groups = () => {
   const { data: availableGroups, isLoading: availableGroupsLoading } = useQuery({
     queryKey: ['available-groups', searchTerm],
     queryFn: async () => {
+      if (!user?.id) return [];
       let query = supabase
         .from('thrift_groups')
-        .select('*')
-        .eq('status', 'active')
-        .neq('created_by', user?.id || '');
+        .select(`
+          id,
+          name,
+          description,
+          contribution_amount,
+          frequency,
+          status,
+          max_participants,
+          current_participants,
+          created_at
+        `)
+        .eq('status', 'recruiting')
+        .neq('creator_id', user.id);
 
       if (searchTerm) {
         query = query.ilike('name', `%${searchTerm}%`);
@@ -57,7 +70,7 @@ const Groups = () => {
       const { data, error } = await query.limit(20);
       
       if (error) throw error;
-      return data;
+      return data || [];
     },
     enabled: !!user?.id
   });
@@ -108,7 +121,7 @@ const Groups = () => {
               <Users className="h-4 w-4 text-muted-foreground" />
               <div>
                 <div className="font-medium">
-                  {group.group_members?.length || 0}/{group.max_members}
+                  {group.current_participants || 0}/{group.max_participants}
                 </div>
                 <div className="text-muted-foreground">members</div>
               </div>
@@ -117,7 +130,7 @@ const Groups = () => {
 
         <div className="flex items-center gap-2 text-sm">
           <Calendar className="h-4 w-4 text-muted-foreground" />
-          <span>Target: {formatCurrency(group.target_amount)}</span>
+          <span>Frequency: {group.frequency}</span>
         </div>
 
         <div className="flex gap-2">
