@@ -354,20 +354,19 @@ const Verification = () => {
               <form onSubmit={handleDocumentUpload} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="document-type">Document Type</Label>
-                  <Select 
-                    value={documentType} 
-                    onValueChange={setDocumentType}
-                    disabled={verification?.verification_status === 'pending'}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select document type" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-background border shadow-lg z-50">
-                      <SelectItem value="drivers_license">Driver's License</SelectItem>
-                      <SelectItem value="nin">National ID (NIN)</SelectItem>
-                      <SelectItem value="passport">International Passport</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    <Select 
+                      value={documentType} 
+                      onValueChange={setDocumentType}
+                    >
+                      <SelectTrigger className="cursor-pointer">
+                        <SelectValue placeholder="Select document type" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background border shadow-lg z-50">
+                        <SelectItem value="drivers_license" className="cursor-pointer">Driver's License</SelectItem>
+                        <SelectItem value="nin" className="cursor-pointer">National ID (NIN)</SelectItem>
+                        <SelectItem value="passport" className="cursor-pointer">International Passport</SelectItem>
+                      </SelectContent>
+                    </Select>
                 </div>
 
                 <div className="space-y-2">
@@ -377,7 +376,8 @@ const Verification = () => {
                     type="file"
                     accept="image/*,.pdf"
                     onChange={handleFileSelect}
-                    disabled={verification?.verification_status === 'pending' || uploadDocumentMutation.isPending}
+                    disabled={uploadDocumentMutation.isPending}
+                    className="cursor-pointer"
                   />
                   <p className="text-xs text-muted-foreground">
                     Accepted formats: JPG, PNG, PDF. Maximum size: 5MB
@@ -401,25 +401,23 @@ const Verification = () => {
                   </Alert>
                 )}
 
-                {verification?.verification_status !== 'pending' && (
-                  <Button 
-                    type="submit" 
-                    disabled={!selectedFile || !documentType || uploadDocumentMutation.isPending}
-                    className="w-full"
-                  >
-                    {uploadDocumentMutation.isPending ? (
-                      <>
-                        <Upload className="mr-2 h-4 w-4 animate-spin" />
-                        Uploading...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="mr-2 h-4 w-4" />
-                        Upload Document
-                      </>
-                    )}
-                  </Button>
-                )}
+                <Button 
+                  type="submit" 
+                  disabled={!selectedFile || !documentType || uploadDocumentMutation.isPending}
+                  className="w-full"
+                >
+                  {uploadDocumentMutation.isPending ? (
+                    <>
+                      <Upload className="mr-2 h-4 w-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload Document
+                    </>
+                  )}
+                </Button>
               </form>
             </CardContent>
           </Card>
