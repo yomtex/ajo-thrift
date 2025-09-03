@@ -40,26 +40,44 @@ const Verification = () => {
     mutationFn: async (bvnNumber: string) => {
       if (!user?.id) throw new Error('User not found');
       
-      // For testing: automatically approve any 10-digit BVN
+      // Get current verification to check if document is uploaded
+      const { data: currentVerification } = await supabase
+        .from('verification')
+        .select('kyc_document_url, document_type')
+        .eq('user_id', user.id)
+        .single();
+      
+      // Determine status: approved only if both BVN and document are provided
+      const hasDocument = currentVerification?.kyc_document_url && currentVerification?.document_type;
+      const newStatus = hasDocument ? 'approved' : 'pending';
+      
+      const updateData: any = { 
+        bvn: bvnNumber,
+        verification_status: newStatus,
+        updated_at: new Date().toISOString()
+      };
+      
+      // Add verified_at if both requirements are met
+      if (newStatus === 'approved') {
+        updateData.verified_at = new Date().toISOString();
+      }
+      
       const { data, error } = await supabase
         .from('verification')
-        .update({ 
-          bvn: bvnNumber,
-          verification_status: 'approved', // Auto-approve for testing
-          verified_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('user_id', user.id)
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      return { data, isComplete: newStatus === 'approved' };
     },
-    onSuccess: () => {
+    onSuccess: ({ data, isComplete }) => {
       toast({
-        title: "BVN Verified!",
-        description: "Your BVN has been automatically verified for testing.",
+        title: isComplete ? "Verification Complete!" : "BVN Saved",
+        description: isComplete 
+          ? "Both BVN and document verified. You can now create groups!" 
+          : "BVN saved. Please upload a document to complete verification.",
       });
       queryClient.invalidateQueries({ queryKey: ['verification'] });
       setBvn('');
@@ -67,7 +85,7 @@ const Verification = () => {
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to verify BVN",
+        description: error.message || "Failed to save BVN",
         variant: "destructive",
       });
     }
@@ -94,26 +112,46 @@ const Verification = () => {
         .from('kyc-documents')
         .getPublicUrl(filePath);
       
+      // Get current verification to check if BVN exists
+      const { data: currentVerification } = await supabase
+        .from('verification')
+        .select('bvn')
+        .eq('user_id', user.id)
+        .single();
+      
+      // Determine status: approved only if both BVN and document are provided
+      const hasBvn = currentVerification?.bvn;
+      const newStatus = hasBvn ? 'approved' : 'pending';
+      
+      const updateData: any = {
+        kyc_document_url: publicUrl,
+        document_type: docType,
+        verification_status: newStatus,
+        updated_at: new Date().toISOString()
+      };
+      
+      // Add verified_at if both requirements are met
+      if (newStatus === 'approved') {
+        updateData.verified_at = new Date().toISOString();
+      }
+      
       // Update verification record with document info
       const { data, error } = await supabase
         .from('verification')
-        .update({ 
-          kyc_document_url: publicUrl,
-          document_type: docType,
-          verification_status: 'pending',
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('user_id', user.id)
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      return { data, isComplete: newStatus === 'approved' };
     },
-    onSuccess: () => {
+    onSuccess: ({ data, isComplete }) => {
       toast({
-        title: "Document Uploaded",
-        description: "Your document has been uploaded for verification.",
+        title: isComplete ? "Verification Complete!" : "Document Uploaded",
+        description: isComplete 
+          ? "Both BVN and document verified. You can now create groups!" 
+          : "Document uploaded. Please add your BVN to complete verification.",
       });
       queryClient.invalidateQueries({ queryKey: ['verification'] });
       setSelectedFile(null);
@@ -276,6 +314,22 @@ const Verification = () => {
                 </p>
               </div>
               
+              {/* Progress indicators */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <div className={`w-2 h-2 rounded-full ${verification?.bvn ? 'bg-success' : 'bg-muted'}`}></div>
+                  <span className={verification?.bvn ? 'text-foreground' : 'text-muted-foreground'}>
+                    BVN {verification?.bvn ? 'provided' : 'required'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <div className={`w-2 h-2 rounded-full ${verification?.kyc_document_url ? 'bg-success' : 'bg-muted'}`}></div>
+                  <span className={verification?.kyc_document_url ? 'text-foreground' : 'text-muted-foreground'}>
+                    Document {verification?.kyc_document_url ? 'uploaded' : 'required'}
+                  </span>
+                </div>
+              </div>
+              
               {verification?.verification_status === 'approved' && (
                 <Alert>
                   <CheckCircle className="h-4 w-4" />
@@ -289,139 +343,129 @@ const Verification = () => {
         </Card>
 
         {/* BVN Verification */}
-        {verification?.verification_status !== 'approved' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Bank Verification Number (BVN)</CardTitle>
-              <CardDescription>
-                Enter your 10-digit BVN to verify your identity
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleBvnSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="bvn">BVN Number</Label>
-                  <Input
-                    id="bvn"
-                    type="text"
-                    placeholder="Enter your 10-digit BVN"
-                    value={bvn}
-                    onChange={(e) => setBvn(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                    maxLength={10}
-                    disabled={verification?.verification_status === 'pending'}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Your BVN is encrypted and stored securely. We use it only for identity verification.
-                  </p>
-                </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Bank Verification Number (BVN)</CardTitle>
+            <CardDescription>
+              Enter your 10-digit BVN to verify your identity
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleBvnSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="bvn">BVN Number</Label>
+                <Input
+                  id="bvn"
+                  type="text"
+                  placeholder="Enter your 10-digit BVN"
+                  value={bvn}
+                  onChange={(e) => setBvn(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  maxLength={10}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Your BVN is encrypted and stored securely. We use it only for identity verification.
+                </p>
+              </div>
 
-                {verification?.verification_status !== 'pending' && (
-                  <Button 
-                    type="submit" 
-                    disabled={bvn.length !== 10 || verifyBvnMutation.isPending}
-                    className="w-full"
-                  >
-                    {verifyBvnMutation.isPending ? 'Submitting...' : 'Verify BVN'}
-                  </Button>
-                )}
-              </form>
+              <Button 
+                type="submit" 
+                disabled={bvn.length !== 10 || verifyBvnMutation.isPending}
+                className="w-full"
+              >
+                {verifyBvnMutation.isPending ? 'Saving BVN...' : 'Save BVN'}
+              </Button>
+            </form>
 
-              {verification?.verification_status === 'pending' && (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Your BVN verification is in progress. You'll receive a notification once it's complete.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </CardContent>
-          </Card>
-        )}
+            {verification?.bvn && (
+              <Alert className="mt-4">
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>
+                  BVN has been saved successfully.
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Document Upload */}
-        {verification?.verification_status !== 'approved' && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Document Upload
-              </CardTitle>
-              <CardDescription>
-                Upload a government-issued ID for additional verification
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleDocumentUpload} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="document-type">Document Type</Label>
-                    <Select 
-                      value={documentType} 
-                      onValueChange={setDocumentType}
-                    >
-                      <SelectTrigger className="cursor-pointer">
-                        <SelectValue placeholder="Select document type" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-background border shadow-lg z-50">
-                        <SelectItem value="drivers_license" className="cursor-pointer">Driver's License</SelectItem>
-                        <SelectItem value="nin" className="cursor-pointer">National ID (NIN)</SelectItem>
-                        <SelectItem value="passport" className="cursor-pointer">International Passport</SelectItem>
-                      </SelectContent>
-                    </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="document-file">Upload Document</Label>
-                  <Input
-                    id="document-file"
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={handleFileSelect}
-                    disabled={uploadDocumentMutation.isPending}
-                    className="cursor-pointer"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Accepted formats: JPG, PNG, PDF. Maximum size: 5MB
-                  </p>
-                  {selectedFile && (
-                    <p className="text-sm text-muted-foreground">
-                      Selected: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)}MB)
-                    </p>
-                  )}
-                </div>
-
-                {verification?.kyc_document_url && (
-                  <Alert>
-                    <FileText className="h-4 w-4" />
-                    <AlertDescription>
-                      Document already uploaded: {getDocumentTypeLabel(verification.document_type || '')}
-                      {verification?.verification_status === 'pending' && (
-                        <span className="block mt-1">Your document is being reviewed.</span>
-                      )}
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                <Button 
-                  type="submit" 
-                  disabled={!selectedFile || !documentType || uploadDocumentMutation.isPending}
-                  className="w-full"
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Document Upload
+            </CardTitle>
+            <CardDescription>
+              Upload a government-issued ID for additional verification
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleDocumentUpload} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="document-type">Document Type</Label>
+                <Select 
+                  value={documentType} 
+                  onValueChange={setDocumentType}
                 >
-                  {uploadDocumentMutation.isPending ? (
-                    <>
-                      <Upload className="mr-2 h-4 w-4 animate-spin" />
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="mr-2 h-4 w-4" />
-                      Upload Document
-                    </>
-                  )}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        )}
+                  <SelectTrigger className="cursor-pointer">
+                    <SelectValue placeholder="Select document type" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border shadow-lg z-50">
+                    <SelectItem value="drivers_license" className="cursor-pointer">Driver's License</SelectItem>
+                    <SelectItem value="nin" className="cursor-pointer">National ID (NIN)</SelectItem>
+                    <SelectItem value="passport" className="cursor-pointer">International Passport</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="document-file">Upload Document</Label>
+                <Input
+                  id="document-file"
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={handleFileSelect}
+                  disabled={uploadDocumentMutation.isPending}
+                  className="cursor-pointer"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Accepted formats: JPG, PNG, PDF. Maximum size: 5MB
+                </p>
+                {selectedFile && (
+                  <p className="text-sm text-muted-foreground">
+                    Selected: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)}MB)
+                  </p>
+                )}
+              </div>
+
+              <Button 
+                type="submit" 
+                disabled={!selectedFile || !documentType || uploadDocumentMutation.isPending}
+                className="w-full"
+              >
+                {uploadDocumentMutation.isPending ? (
+                  <>
+                    <Upload className="mr-2 h-4 w-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload Document
+                  </>
+                )}
+              </Button>
+            </form>
+
+            {verification?.kyc_document_url && (
+              <Alert className="mt-4">
+                <FileText className="h-4 w-4" />
+                <AlertDescription>
+                  Document uploaded: {getDocumentTypeLabel(verification.document_type || '')}
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
 
       </div>
     </div>
