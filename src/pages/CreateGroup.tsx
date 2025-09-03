@@ -12,7 +12,7 @@ import { ArrowLeft, Users, Calendar, DollarSign, AlertCircle } from 'lucide-reac
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatNumberInput, parseNumberInput } from '@/lib/utils';
 
 const CreateGroup = () => {
   const { user } = useAuth();
@@ -54,7 +54,7 @@ const CreateGroup = () => {
         .insert({
           name: groupData.name,
           description: groupData.description,
-          contribution_amount: parseFloat(groupData.contributionAmount),
+          contribution_amount: parseNumberInput(groupData.contributionAmount),
           frequency: groupData.frequency as 'weekly' | 'monthly',
           max_participants: parseInt(groupData.maxParticipants),
           start_date: groupData.startDate,
@@ -94,7 +94,19 @@ const CreateGroup = () => {
   });
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    if (field === 'contributionAmount') {
+      // Format contribution amount with commas
+      const formatted = formatNumberInput(value);
+      setFormData(prev => ({ ...prev, [field]: formatted }));
+    } else if (field === 'maxParticipants') {
+      // Only allow digits for participants, no formatting needed
+      const numericValue = value.replace(/\D/g, '');
+      if (numericValue === '' || (parseInt(numericValue) >= 2 && parseInt(numericValue) <= 50)) {
+        setFormData(prev => ({ ...prev, [field]: numericValue }));
+      }
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -120,7 +132,7 @@ const CreateGroup = () => {
       return;
     }
 
-    if (parseFloat(formData.contributionAmount) < 1000) {
+    if (parseNumberInput(formData.contributionAmount) < 1000) {
       toast({
         title: "Invalid Amount",
         description: "Minimum contribution is ₦1,000",
@@ -227,12 +239,10 @@ const CreateGroup = () => {
                     <Label htmlFor="contribution">Contribution Amount (₦) *</Label>
                     <Input
                       id="contribution"
-                      type="number"
-                      placeholder="10000"
+                      type="text"
+                      placeholder="10,000"
                       value={formData.contributionAmount}
                       onChange={(e) => handleInputChange('contributionAmount', e.target.value)}
-                      min="1000"
-                      step="100"
                     />
                     <p className="text-xs text-muted-foreground">
                       Minimum: ₦1,000
@@ -261,12 +271,10 @@ const CreateGroup = () => {
                     <Label htmlFor="participants">Maximum Participants *</Label>
                     <Input
                       id="participants"
-                      type="number"
+                      type="text"
                       placeholder="10"
                       value={formData.maxParticipants}
                       onChange={(e) => handleInputChange('maxParticipants', e.target.value)}
-                      min="2"
-                      max="50"
                     />
                     <p className="text-xs text-muted-foreground">
                       Between 2 and 50 members
@@ -327,7 +335,7 @@ const CreateGroup = () => {
                   <div>
                     <div className="font-medium">
                       {formData.contributionAmount 
-                        ? formatCurrency(parseFloat(formData.contributionAmount))
+                        ? formatCurrency(parseNumberInput(formData.contributionAmount))
                         : '₦0'
                       }
                     </div>

@@ -72,3 +72,16 @@ export function generateRandomOrder(length: number): number[] {
   }
   return array;
 }
+
+export function formatNumberInput(value: string): string {
+  // Remove all non-digit characters
+  const numericValue = value.replace(/\D/g, '');
+  
+  // Format with commas
+  return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+export function parseNumberInput(value: string): number {
+  // Remove commas and parse as number
+  return parseFloat(value.replace(/,/g, '')) || 0;
+}
