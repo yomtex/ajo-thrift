@@ -20,6 +20,13 @@ const CreateGroup = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [showPreview, setShowPreview] = useState(false);
+  const [showHelper, setShowHelper] = useState(false);
+  const [helperSuggestions, setHelperSuggestions] = useState<Array<{
+    id: string;
+    label: string;
+    description: string;
+    updates: Partial<typeof formData>;
+  }>>([]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -77,6 +84,69 @@ const CreateGroup = () => {
     const periods = calculatePeriods(formData.startDate, formData.endDate, formData.frequency);
     const contributionAmount = parseNumberInput(formData.contributionAmount);
     return periods * contributionAmount;
+  };
+
+  // Generate helper suggestions when amounts don't match
+  const generateSuggestions = () => {
+    const expectedTotal = calculateExpectedTotal();
+    const targetAmount = parseNumberInput(formData.targetAmount);
+    const contributionAmount = parseNumberInput(formData.contributionAmount);
+    const periods = calculatePeriods(formData.startDate, formData.endDate, formData.frequency);
+    
+    const suggestions = [];
+
+    // Option 1: Adjust target amount to match expected total
+    suggestions.push({
+      id: 'adjust-target',
+      label: 'Adjust Target Amount',
+      description: `Set target amount to ${formatCurrency(expectedTotal)} to match your current settings`,
+      updates: {
+        targetAmount: formatNumberInput(expectedTotal.toString())
+      }
+    });
+
+    // Option 2: Adjust contribution amount to match target
+    if (periods > 0) {
+      const newContribution = targetAmount / periods;
+      if (newContribution >= 1000) {
+        suggestions.push({
+          id: 'adjust-contribution',
+          label: 'Adjust Contribution Amount',
+          description: `Set contribution to ${formatCurrency(newContribution)} per ${formData.frequency === 'every' ? 'lump sum' : formData.frequency} to reach your target`,
+          updates: {
+            contributionAmount: formatNumberInput(newContribution.toString())
+          }
+        });
+      }
+    }
+
+    // Option 3: Adjust date range for monthly frequency
+    if (formData.frequency === 'monthly' && contributionAmount > 0) {
+      const targetPeriods = Math.ceil(targetAmount / contributionAmount);
+      const startDate = new Date(formData.startDate);
+      const newEndDate = new Date(startDate);
+      newEndDate.setMonth(startDate.getMonth() + targetPeriods);
+      
+      suggestions.push({
+        id: 'adjust-dates',
+        label: 'Adjust Date Range',
+        description: `Extend to ${targetPeriods} months (ending ${newEndDate.toLocaleDateString()}) to reach your target`,
+        updates: {
+          endDate: newEndDate.toISOString().split('T')[0]
+        }
+      });
+    }
+
+    return suggestions;
+  };
+
+  const applySuggestion = (suggestion: typeof helperSuggestions[0]) => {
+    setFormData(prev => ({ ...prev, ...suggestion.updates }));
+    setShowHelper(false);
+    toast({
+      title: "Settings Updated",
+      description: suggestion.label + " applied successfully",
+    });
   };
 
   const createGroupMutation = useMutation({
@@ -190,11 +260,9 @@ const CreateGroup = () => {
     const targetAmount = parseNumberInput(formData.targetAmount);
     
     if (Math.abs(expectedTotal - targetAmount) > 0.01) {
-      toast({
-        title: "Amount Mismatch",
-        description: `Target amount should match expected total: ${formatCurrency(expectedTotal)}`,
-        variant: "destructive",
-      });
+      const suggestions = generateSuggestions();
+      setHelperSuggestions(suggestions);
+      setShowHelper(true);
       return;
     }
 
@@ -512,6 +580,59 @@ const CreateGroup = () => {
               <Button 
                 variant="outline" 
                 onClick={() => setShowPreview(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Helper Modal */}
+      <Dialog open={showHelper} onOpenChange={() => {}}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-yellow-500" />
+              Amount Mismatch Detected
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+              <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                The target amount doesn't match your expected total based on the contribution amount and date range. 
+                Choose from our suggestions below to fix this:
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {helperSuggestions.map((suggestion) => (
+                <div
+                  key={suggestion.id}
+                  className="p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                  onClick={() => applySuggestion(suggestion)}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-sm">{suggestion.label}</h4>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {suggestion.description}
+                      </p>
+                    </div>
+                    <Button size="sm" variant="outline">
+                      Apply
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-2 pt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowHelper(false)}
+                className="flex-1"
               >
                 Cancel
               </Button>
