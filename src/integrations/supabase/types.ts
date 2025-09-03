@@ -475,6 +475,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_view_user_profile: {
+        Args: { requesting_user_id: string; target_user_id: string }
+        Returns: boolean
+      }
+      get_group_members_safe: {
+        Args: { group_id_param: string }
+        Returns: {
+          avatar_url: string
+          first_name: string
+          id: string
+          is_frozen: boolean
+          joined_at: string
+          last_name: string
+          payout_position: number
+          user_id: string
+        }[]
+      }
       is_admin: {
         Args: { user_id: string }
         Returns: boolean

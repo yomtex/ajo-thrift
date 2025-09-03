@@ -65,21 +65,9 @@ export function GroupChatSidebar({ groupId, isCreator }: GroupChatSidebarProps) 
     queryKey: ['group-members', groupId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('group_members')
-        .select(`
-          id,
-          user_id,
-          joined_at,
-          payout_position,
-          profiles (
-            first_name,
-            last_name,
-            email,
-            is_frozen
-          )
-        `)
-        .eq('group_id', groupId)
-        .order('joined_at');
+        .rpc('get_group_members_safe', { 
+          group_id_param: groupId 
+        });
       
       if (error) throw error;
       return data || [];
@@ -170,7 +158,7 @@ export function GroupChatSidebar({ groupId, isCreator }: GroupChatSidebarProps) 
   };
 
   const getStatusColor = (member: any) => {
-    if (member.profiles?.is_frozen) return 'bg-destructive text-destructive-foreground';
+    if (member.is_frozen) return 'bg-destructive text-destructive-foreground';
     if (member.user_id === user?.id) return 'bg-primary text-primary-foreground';
     return 'bg-muted text-muted-foreground';
   };
@@ -231,19 +219,19 @@ export function GroupChatSidebar({ groupId, isCreator }: GroupChatSidebarProps) 
                     >
                       <Avatar className="h-8 w-8 flex-shrink-0">
                         <AvatarFallback className={getStatusColor(member)}>
-                          {getInitials(member.profiles?.first_name, member.profiles?.last_name)}
+                          {getInitials(member.first_name, member.last_name)}
                         </AvatarFallback>
                       </Avatar>
 
                       <div className="flex-1 min-w-0 hidden md:block">
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-medium truncate">
-                            {member.profiles?.first_name} {member.profiles?.last_name}
+                            {member.first_name} {member.last_name}
                           </p>
                           {member.user_id === user?.id && (
                             <Badge variant="outline" className="text-xs">You</Badge>
                           )}
-                          {member.profiles?.is_frozen && (
+                          {member.is_frozen && (
                             <Badge variant="destructive" className="text-xs">
                               <Ban className="h-3 w-3 mr-1" />
                               Frozen
@@ -254,7 +242,7 @@ export function GroupChatSidebar({ groupId, isCreator }: GroupChatSidebarProps) 
                         {isCreator && (
                           <div className="flex items-center gap-1 mt-1">
                             <p className="text-xs text-muted-foreground truncate">
-                              {member.profiles?.email}
+                              Member ID: {member.user_id.slice(0, 8)}...
                             </p>
                             
                             <DropdownMenu>
@@ -272,7 +260,7 @@ export function GroupChatSidebar({ groupId, isCreator }: GroupChatSidebarProps) 
                                   Report User
                                 </DropdownMenuItem>
                                 
-                                {member.profiles?.is_frozen ? (
+                                {member.is_frozen ? (
                                   <DropdownMenuItem
                                     onClick={() => unfreezeUserMutation.mutate(member.user_id)}
                                     className="text-green-600"

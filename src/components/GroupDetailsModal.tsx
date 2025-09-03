@@ -43,19 +43,9 @@ const GroupDetailsModal = ({ group, children, isMember }: GroupDetailsModalProps
     queryKey: ['group-members', group.id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('group_members')
-        .select(`
-          id,
-          user_id,
-          joined_at,
-          payout_position,
-          profiles (
-            first_name,
-            last_name,
-            email
-          )
-        `)
-        .eq('group_id', group.id);
+        .rpc('get_group_members_safe', { 
+          group_id_param: group.id 
+        });
       
       if (error) throw error;
       return data || [];
@@ -76,8 +66,7 @@ const GroupDetailsModal = ({ group, children, isMember }: GroupDetailsModalProps
           requested_at,
           profiles (
             first_name,
-            last_name,
-            email
+            last_name
           )
         `)
         .eq('group_id', group.id)
@@ -294,16 +283,16 @@ const GroupDetailsModal = ({ group, children, isMember }: GroupDetailsModalProps
                 {groupMembers?.map((member: any) => (
                   <Card key={member.id}>
                     <CardContent className="flex items-center justify-between p-4">
-                      <div className="flex items-center gap-3">
+                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          {member.profiles?.first_name?.[0]}{member.profiles?.last_name?.[0]}
+                          {member.first_name?.[0]}{member.last_name?.[0]}
                         </div>
                         <div>
                           <div className="font-medium">
-                            {member.profiles?.first_name} {member.profiles?.last_name}
+                            {member.first_name} {member.last_name}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            {member.profiles?.email}
+                            Member ID: {member.user_id.slice(0, 8)}...
                           </div>
                         </div>
                       </div>
@@ -335,12 +324,12 @@ const GroupDetailsModal = ({ group, children, isMember }: GroupDetailsModalProps
                               <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
                                 <UserPlus className="h-5 w-5" />
                               </div>
-                              <div className="space-y-1">
+                               <div className="space-y-1">
                                 <div className="font-medium">
                                   {request.profiles?.first_name} {request.profiles?.last_name}
                                 </div>
                                 <div className="text-sm text-muted-foreground">
-                                  {request.profiles?.email}
+                                  User ID: {request.user_id.slice(0, 8)}...
                                 </div>
                                 {request.message && (
                                   <div className="text-sm bg-muted p-2 rounded">
