@@ -4,8 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CheckCircle, AlertCircle, Upload, Shield } from 'lucide-react';
+import { CheckCircle, AlertCircle, Upload, Shield, FileText } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
@@ -15,6 +16,9 @@ const Verification = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [bvn, setBvn] = useState('');
+  const [documentType, setDocumentType] = useState('');
+  const [uploadingDocument, setUploadingDocument] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const { data: verification, isLoading } = useQuery({
     queryKey: ['verification', user?.id],
@@ -67,16 +71,126 @@ const Verification = () => {
     }
   });
 
+  const uploadDocumentMutation = useMutation({
+    mutationFn: async ({ file, docType }: { file: File; docType: string }) => {
+      if (!user?.id) throw new Error('User not found');
+      
+      // Create file path with user ID and timestamp
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+      
+      // Upload file to storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('kyc-documents')
+        .upload(filePath, file);
+        
+      if (uploadError) throw uploadError;
+      
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('kyc-documents')
+        .getPublicUrl(filePath);
+      
+      // Update verification record with document info
+      const { data, error } = await supabase
+        .from('verification')
+        .update({ 
+          kyc_document_url: publicUrl,
+          document_type: docType,
+          verification_status: 'pending',
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Document Uploaded",
+        description: "Your document has been uploaded for verification.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['verification'] });
+      setSelectedFile(null);
+      setDocumentType('');
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to upload document",
+        variant: "destructive",
+      });
+    }
+  });
+
   const handleBvnSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (bvn.length === 11) {
+    if (bvn.length === 10 && /^\d+$/.test(bvn)) {
       verifyBvnMutation.mutate(bvn);
     } else {
       toast({
         title: "Invalid BVN",
-        description: "BVN must be 11 digits",
+        description: "BVN must be exactly 10 digits",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type (images and PDFs)
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+      if (!allowedTypes.includes(file.type)) {
+        toast({
+          title: "Invalid File Type",
+          description: "Please upload a JPG, PNG, or PDF file",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File Too Large",
+          description: "Please upload a file smaller than 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setSelectedFile(file);
+    }
+  };
+
+  const handleDocumentUpload = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedFile || !documentType) {
+      toast({
+        title: "Missing Information",
+        description: "Please select both document type and file",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    uploadDocumentMutation.mutate({ file: selectedFile, docType: documentType });
+  };
+
+  const getDocumentTypeLabel = (type: string) => {
+    switch (type) {
+      case 'drivers_license':
+        return "Driver's License";
+      case 'nin':
+        return 'National ID (NIN)';
+      case 'passport':
+        return 'International Passport';
+      default:
+        return type;
     }
   };
 
@@ -178,7 +292,7 @@ const Verification = () => {
             <CardHeader>
               <CardTitle>Bank Verification Number (BVN)</CardTitle>
               <CardDescription>
-                Enter your 11-digit BVN to verify your identity
+                Enter your 10-digit BVN to verify your identity
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -188,10 +302,10 @@ const Verification = () => {
                   <Input
                     id="bvn"
                     type="text"
-                    placeholder="Enter your 11-digit BVN"
+                    placeholder="Enter your 10-digit BVN"
                     value={bvn}
-                    onChange={(e) => setBvn(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                    maxLength={11}
+                    onChange={(e) => setBvn(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    maxLength={10}
                     disabled={verification?.verification_status === 'pending'}
                   />
                   <p className="text-xs text-muted-foreground">
@@ -202,7 +316,7 @@ const Verification = () => {
                 {verification?.verification_status !== 'pending' && (
                   <Button 
                     type="submit" 
-                    disabled={bvn.length !== 11 || verifyBvnMutation.isPending}
+                    disabled={bvn.length !== 10 || verifyBvnMutation.isPending}
                     className="w-full"
                   >
                     {verifyBvnMutation.isPending ? 'Submitting...' : 'Verify BVN'}
@@ -222,24 +336,93 @@ const Verification = () => {
           </Card>
         )}
 
-        {/* Document Upload (Future Feature) */}
-        <Card className="opacity-75">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Upload className="h-5 w-5" />
-              Document Upload
-              <span className="text-xs bg-muted px-2 py-1 rounded">Coming Soon</span>
-            </CardTitle>
-            <CardDescription>
-              Additional document verification (feature coming soon)
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Advanced verification with document upload will be available soon.
-            </p>
-          </CardContent>
-        </Card>
+        {/* Document Upload */}
+        {verification?.verification_status !== 'approved' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Document Upload
+              </CardTitle>
+              <CardDescription>
+                Upload a government-issued ID for additional verification
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleDocumentUpload} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="document-type">Document Type</Label>
+                  <Select 
+                    value={documentType} 
+                    onValueChange={setDocumentType}
+                    disabled={verification?.verification_status === 'pending'}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select document type" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border shadow-lg z-50">
+                      <SelectItem value="drivers_license">Driver's License</SelectItem>
+                      <SelectItem value="nin">National ID (NIN)</SelectItem>
+                      <SelectItem value="passport">International Passport</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="document-file">Upload Document</Label>
+                  <Input
+                    id="document-file"
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={handleFileSelect}
+                    disabled={verification?.verification_status === 'pending' || uploadDocumentMutation.isPending}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Accepted formats: JPG, PNG, PDF. Maximum size: 5MB
+                  </p>
+                  {selectedFile && (
+                    <p className="text-sm text-muted-foreground">
+                      Selected: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)}MB)
+                    </p>
+                  )}
+                </div>
+
+                {verification?.kyc_document_url && (
+                  <Alert>
+                    <FileText className="h-4 w-4" />
+                    <AlertDescription>
+                      Document already uploaded: {getDocumentTypeLabel(verification.document_type || '')}
+                      {verification?.verification_status === 'pending' && (
+                        <span className="block mt-1">Your document is being reviewed.</span>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {verification?.verification_status !== 'pending' && (
+                  <Button 
+                    type="submit" 
+                    disabled={!selectedFile || !documentType || uploadDocumentMutation.isPending}
+                    className="w-full"
+                  >
+                    {uploadDocumentMutation.isPending ? (
+                      <>
+                        <Upload className="mr-2 h-4 w-4 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="mr-2 h-4 w-4" />
+                        Upload Document
+                      </>
+                    )}
+                  </Button>
+                )}
+              </form>
+            </CardContent>
+          </Card>
+        )}
+
       </div>
     </div>
   );

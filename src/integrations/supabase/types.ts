@@ -258,6 +258,7 @@ export type Database = {
         Row: {
           bvn: string | null
           created_at: string
+          document_type: string | null
           id: string
           kyc_document_url: string | null
           notes: string | null
@@ -269,6 +270,7 @@ export type Database = {
         Insert: {
           bvn?: string | null
           created_at?: string
+          document_type?: string | null
           id?: string
           kyc_document_url?: string | null
           notes?: string | null
@@ -280,6 +282,7 @@ export type Database = {
         Update: {
           bvn?: string | null
           created_at?: string
+          document_type?: string | null
           id?: string
           kyc_document_url?: string | null
           notes?: string | null
@@ -327,6 +330,7 @@ export type Database = {
     Enums: {
       app_role: "admin" | "user"
       contribution_status: "pending" | "paid" | "late" | "missed"
+      document_type: "drivers_license" | "nin" | "passport"
       group_frequency: "daily" | "weekly" | "monthly"
       group_status: "recruiting" | "active" | "completed" | "cancelled"
       transaction_category:
@@ -465,6 +469,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "user"],
       contribution_status: ["pending", "paid", "late", "missed"],
+      document_type: ["drivers_license", "nin", "passport"],
       group_frequency: ["daily", "weekly", "monthly"],
       group_status: ["recruiting", "active", "completed", "cancelled"],
       transaction_category: [
