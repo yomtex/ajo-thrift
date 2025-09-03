@@ -24,7 +24,8 @@ import {
   Ban, 
   MoreVertical,
   Clock,
-  DollarSign
+  DollarSign,
+  Shuffle
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -33,6 +34,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ReportUserDialog } from './ReportUserDialog';
+import { PaymentScheduleDialog } from './PaymentScheduleDialog';
+import { ContributionsDialog } from './ContributionsDialog';
+import { PayoutOrderDialog } from './PayoutOrderDialog';
 
 interface GroupChatSidebarProps {
   groupId: string;
@@ -47,6 +51,9 @@ export function GroupChatSidebar({ groupId, isCreator }: GroupChatSidebarProps) 
   const collapsed = state === "collapsed";
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [paymentScheduleOpen, setPaymentScheduleOpen] = useState(false);
+  const [contributionsOpen, setContributionsOpen] = useState(false);
+  const [payoutOrderOpen, setPayoutOrderOpen] = useState(false);
 
   const { data: groupMembers } = useQuery({
     queryKey: ['group-members', groupId],
@@ -276,13 +283,32 @@ export function GroupChatSidebar({ groupId, isCreator }: GroupChatSidebarProps) 
               <SidebarGroupLabel>Admin Actions</SidebarGroupLabel>
               <SidebarGroupContent>
                 <div className="p-2 space-y-2">
-                  <Button variant="outline" size="sm" className="w-full justify-start">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full justify-start"
+                    onClick={() => setContributionsOpen(true)}
+                  >
                     <DollarSign className="h-4 w-4 mr-2" />
                     View Contributions
                   </Button>
-                  <Button variant="outline" size="sm" className="w-full justify-start">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full justify-start"
+                    onClick={() => setPaymentScheduleOpen(true)}
+                  >
                     <Clock className="h-4 w-4 mr-2" />
                     Payment Schedule
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full justify-start"
+                    onClick={() => setPayoutOrderOpen(true)}
+                  >
+                    <Shuffle className="h-4 w-4 mr-2" />
+                    Payout Order
                   </Button>
                 </div>
               </SidebarGroupContent>
@@ -296,6 +322,27 @@ export function GroupChatSidebar({ groupId, isCreator }: GroupChatSidebarProps) 
         onOpenChange={setReportDialogOpen}
         groupId={groupId}
         userId={selectedUserId}
+      />
+      
+      <PaymentScheduleDialog
+        open={paymentScheduleOpen}
+        onOpenChange={setPaymentScheduleOpen}
+        groupId={groupId}
+        isCreator={isCreator}
+      />
+      
+      <ContributionsDialog
+        open={contributionsOpen}
+        onOpenChange={setContributionsOpen}
+        groupId={groupId}
+        isCreator={isCreator}
+      />
+      
+      <PayoutOrderDialog
+        open={payoutOrderOpen}
+        onOpenChange={setPayoutOrderOpen}
+        groupId={groupId}
+        isCreator={isCreator}
       />
     </>
   );

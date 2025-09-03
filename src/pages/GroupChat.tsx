@@ -208,9 +208,9 @@ const GroupChatPage = () => {
           </Card>
 
           {/* Chat Area */}
-          <div className="flex-1 flex flex-col p-4">
-            <ScrollArea className="flex-1 pr-4 mb-4">
-              <div className="space-y-4">
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <ScrollArea className="flex-1 p-4">
+              <div className="space-y-4 pb-4">
                 {messages && messages.length > 0 ? (
                   messages.map((message: any) => (
                     <div key={message.id} className={`flex ${message.user_id === user?.id ? 'justify-end' : 'justify-start'}`}>
@@ -248,27 +248,25 @@ const GroupChatPage = () => {
               </div>
             </ScrollArea>
 
-            {/* Message Input */}
-            <Card>
-              <CardContent className="p-4">
-                <form onSubmit={handleSendMessage} className="flex gap-2">
-                  <Input
-                    placeholder="Type your message..."
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    disabled={sendMessageMutation.isPending}
-                    className="flex-1"
-                  />
-                  <Button 
-                    type="submit" 
-                    size="icon"
-                    disabled={!newMessage.trim() || sendMessageMutation.isPending}
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
+            {/* Fixed Message Input */}
+            <div className="border-t bg-background p-4">
+              <form onSubmit={handleSendMessage} className="flex gap-2">
+                <Input
+                  placeholder="Type your message..."
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  disabled={sendMessageMutation.isPending}
+                  className="flex-1"
+                />
+                <Button 
+                  type="submit" 
+                  size="icon"
+                  disabled={!newMessage.trim() || sendMessageMutation.isPending}
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </form>
+            </div>
           </div>
         </main>
       </div>
