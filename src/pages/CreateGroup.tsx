@@ -101,13 +101,13 @@ const CreateGroup = () => {
       label: 'Adjust Target Amount',
       description: `Set target amount to ${formatCurrency(expectedTotal)} to match your current settings`,
       updates: {
-        targetAmount: formatNumberInput(expectedTotal.toString())
+        targetAmount: formatNumberInput(Math.round(expectedTotal).toString())
       }
     });
 
     // Option 2: Adjust contribution amount to match target
     if (periods > 0) {
-      const newContribution = targetAmount / periods;
+      const newContribution = Math.round(targetAmount / periods);
       if (newContribution >= 1000) {
         suggestions.push({
           id: 'adjust-contribution',
