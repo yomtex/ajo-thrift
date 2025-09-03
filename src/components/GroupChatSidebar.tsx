@@ -174,29 +174,30 @@ export function GroupChatSidebar({ groupId, isCreator }: GroupChatSidebarProps) 
 
   return (
     <>
-      <Sidebar className={collapsed ? "w-14" : "w-80"}>
-        <SidebarHeader className="border-b p-4">
+      <Sidebar className="md:w-80 w-16 transition-all duration-300">
+        <SidebarHeader className="border-b p-2 md:p-4">
           <div className="flex items-center gap-3">
-            <SidebarTrigger />
-            {!collapsed && (
-              <div className="flex-1">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Group Members
-                </h3>
-                {groupInfo && (
-                  <p className="text-sm text-muted-foreground">
-                    {groupInfo.current_participants}/{groupInfo.max_participants} members
-                  </p>
-                )}
-              </div>
-            )}
+            <SidebarTrigger className="md:hidden" />
+            <div className="flex-1 hidden md:block">
+              <h3 className="font-semibold flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Group Members
+              </h3>
+              {groupInfo && (
+                <p className="text-sm text-muted-foreground">
+                  {groupInfo.current_participants}/{groupInfo.max_participants} members
+                </p>
+              )}
+            </div>
+            <div className="md:hidden flex items-center justify-center w-full">
+              <Users className="h-5 w-5" />
+            </div>
           </div>
         </SidebarHeader>
 
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupLabel className={collapsed ? "sr-only" : ""}>
+            <SidebarGroupLabel className="hidden md:block">
               Active Members
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -207,73 +208,71 @@ export function GroupChatSidebar({ groupId, isCreator }: GroupChatSidebarProps) 
                       key={member.id}
                       className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50"
                     >
-                      <Avatar className="h-8 w-8">
+                      <Avatar className="h-8 w-8 flex-shrink-0">
                         <AvatarFallback className={getStatusColor(member)}>
                           {getInitials(member.profiles?.first_name, member.profiles?.last_name)}
                         </AvatarFallback>
                       </Avatar>
 
-                      {!collapsed && (
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium truncate">
-                              {member.profiles?.first_name} {member.profiles?.last_name}
-                            </p>
-                            {member.user_id === user?.id && (
-                              <Badge variant="outline" className="text-xs">You</Badge>
-                            )}
-                            {member.profiles?.is_frozen && (
-                              <Badge variant="destructive" className="text-xs">
-                                <Ban className="h-3 w-3 mr-1" />
-                                Frozen
-                              </Badge>
-                            )}
-                          </div>
-                          
-                          {isCreator && (
-                            <div className="flex items-center gap-1 mt-1">
-                              <p className="text-xs text-muted-foreground truncate">
-                                {member.profiles?.email}
-                              </p>
-                              
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-6 w-6">
-                                    <MoreVertical className="h-3 w-3" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem
-                                    onClick={() => handleReportUser(member.user_id)}
-                                    className="text-yellow-600"
-                                  >
-                                    <AlertTriangle className="h-4 w-4 mr-2" />
-                                    Report User
-                                  </DropdownMenuItem>
-                                  
-                                  {member.profiles?.is_frozen ? (
-                                    <DropdownMenuItem
-                                      onClick={() => unfreezeUserMutation.mutate(member.user_id)}
-                                      className="text-green-600"
-                                    >
-                                      <Shield className="h-4 w-4 mr-2" />
-                                      Unfreeze User
-                                    </DropdownMenuItem>
-                                  ) : (
-                                    <DropdownMenuItem
-                                      onClick={() => freezeUserMutation.mutate(member.user_id)}
-                                      className="text-red-600"
-                                    >
-                                      <Ban className="h-4 w-4 mr-2" />
-                                      Freeze User
-                                    </DropdownMenuItem>
-                                  )}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
+                      <div className="flex-1 min-w-0 hidden md:block">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium truncate">
+                            {member.profiles?.first_name} {member.profiles?.last_name}
+                          </p>
+                          {member.user_id === user?.id && (
+                            <Badge variant="outline" className="text-xs">You</Badge>
+                          )}
+                          {member.profiles?.is_frozen && (
+                            <Badge variant="destructive" className="text-xs">
+                              <Ban className="h-3 w-3 mr-1" />
+                              Frozen
+                            </Badge>
                           )}
                         </div>
-                      )}
+                        
+                        {isCreator && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <p className="text-xs text-muted-foreground truncate">
+                              {member.profiles?.email}
+                            </p>
+                            
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-6 w-6">
+                                  <MoreVertical className="h-3 w-3" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => handleReportUser(member.user_id)}
+                                  className="text-yellow-600"
+                                >
+                                  <AlertTriangle className="h-4 w-4 mr-2" />
+                                  Report User
+                                </DropdownMenuItem>
+                                
+                                {member.profiles?.is_frozen ? (
+                                  <DropdownMenuItem
+                                    onClick={() => unfreezeUserMutation.mutate(member.user_id)}
+                                    className="text-green-600"
+                                  >
+                                    <Shield className="h-4 w-4 mr-2" />
+                                    Unfreeze User
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem
+                                    onClick={() => freezeUserMutation.mutate(member.user_id)}
+                                    className="text-red-600"
+                                  >
+                                    <Ban className="h-4 w-4 mr-2" />
+                                    Freeze User
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -281,46 +280,50 @@ export function GroupChatSidebar({ groupId, isCreator }: GroupChatSidebarProps) 
             </SidebarGroupContent>
           </SidebarGroup>
 
-          {isCreator && !collapsed && (
+          {isCreator && (
             <SidebarGroup>
-              <SidebarGroupLabel>Admin Actions</SidebarGroupLabel>
+              <SidebarGroupLabel className="hidden md:block">Admin Actions</SidebarGroupLabel>
               <SidebarGroupContent>
                 <div className="p-2 space-y-2">
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="w-full justify-start"
+                    className="w-full justify-center md:justify-start"
                     onClick={() => setContributionsOpen(true)}
+                    title="View Contributions"
                   >
-                    <DollarSign className="h-4 w-4 mr-2" />
-                    View Contributions
+                    <DollarSign className="h-4 w-4 md:mr-2" />
+                    <span className="hidden md:inline">View Contributions</span>
                   </Button>
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="w-full justify-start"
+                    className="w-full justify-center md:justify-start"
                     onClick={() => setPaymentScheduleOpen(true)}
+                    title="Payment Schedule"
                   >
-                    <Clock className="h-4 w-4 mr-2" />
-                    Payment Schedule
+                    <Clock className="h-4 w-4 md:mr-2" />
+                    <span className="hidden md:inline">Payment Schedule</span>
                   </Button>
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="w-full justify-start"
+                    className="w-full justify-center md:justify-start"
                     onClick={() => setPayoutOrderOpen(true)}
+                    title="Payout Order"
                   >
-                    <Shuffle className="h-4 w-4 mr-2" />
-                    Payout Order
+                    <Shuffle className="h-4 w-4 md:mr-2" />
+                    <span className="hidden md:inline">Payout Order</span>
                   </Button>
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="w-full justify-start"
+                    className="w-full justify-center md:justify-start"
                     onClick={() => setPayoutDialogOpen(true)}
+                    title="Process Payouts"
                   >
-                    <HandCoins className="h-4 w-4 mr-2" />
-                    Process Payouts
+                    <HandCoins className="h-4 w-4 md:mr-2" />
+                    <span className="hidden md:inline">Process Payouts</span>
                   </Button>
                 </div>
               </SidebarGroupContent>

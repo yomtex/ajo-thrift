@@ -226,94 +226,103 @@ const GroupChatPage = () => {
           isCreator={membershipData.isCreator} 
         />
         
-        <main className="flex-1 flex flex-col">
+        <main className="flex-1 flex flex-col min-w-0">
           {/* Header */}
-          <Card className="rounded-none border-x-0 border-t-0">
-            <CardHeader className="pb-3">
+          <div className="flex-shrink-0 border-b bg-background">
+            <div className="p-4">
               <div className="flex items-center gap-3">
                 <Button 
                   variant="ghost" 
                   size="icon"
                   onClick={() => navigate('/groups')}
+                  className="flex-shrink-0"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
-                <div className="flex-1">
-                  <CardTitle className="flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
                     {membershipData.isCreator ? (
-                      <Shield className="h-5 w-5 text-primary" />
+                      <Shield className="h-5 w-5 text-primary flex-shrink-0" />
                     ) : (
-                      <Users className="h-5 w-5 text-muted-foreground" />
+                      <Users className="h-5 w-5 text-muted-foreground flex-shrink-0" />
                     )}
-                    {membershipData.group?.name}
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">
+                    <h1 className="font-semibold truncate">{membershipData.group?.name}</h1>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1 truncate">
                     {membershipData.group?.description}
                   </p>
                 </div>
               </div>
-            </CardHeader>
-          </Card>
+            </div>
+          </div>
 
-          {/* Chat Area */}
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <ScrollArea className="flex-1 p-4">
-              <div className="space-y-4 pb-4">
-                {messages && messages.length > 0 ? (
-                  messages.map((message: any) => (
-                    <div key={message.id} className={`flex ${message.user_id === user?.id ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                        message.user_id === user?.id 
-                          ? 'bg-primary text-primary-foreground' 
-                          : 'bg-muted'
-                      }`}>
-                        {message.user_id !== user?.id && (
-                          <div className="text-xs font-medium mb-1">
-                            {message.profiles?.first_name} {message.profiles?.last_name}
+          {/* Chat Area with Fixed Input */}
+          <div className="flex-1 flex flex-col min-h-0 relative">
+            {/* Messages Area */}
+            <div className="flex-1 overflow-hidden">
+              <ScrollArea className="h-full">
+                <div className="p-4 pb-20">
+                  {messages && messages.length > 0 ? (
+                    <div className="space-y-4">
+                      {messages.map((message: any) => (
+                        <div key={message.id} className={`flex ${message.user_id === user?.id ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                            message.user_id === user?.id 
+                              ? 'bg-primary text-primary-foreground' 
+                              : 'bg-muted'
+                          }`}>
+                            {message.user_id !== user?.id && (
+                              <div className="text-xs font-medium mb-1">
+                                {message.profiles?.first_name} {message.profiles?.last_name}
+                              </div>
+                            )}
+                            <div className="text-sm">{message.message}</div>
+                            <div className={`text-xs mt-1 ${
+                              message.user_id === user?.id 
+                                ? 'text-primary-foreground/70' 
+                                : 'text-muted-foreground'
+                            }`}>
+                              {new Date(message.created_at).toLocaleTimeString()}
+                            </div>
                           </div>
-                        )}
-                        <div className="text-sm">{message.message}</div>
-                        <div className={`text-xs mt-1 ${
-                          message.user_id === user?.id 
-                            ? 'text-primary-foreground/70' 
-                            : 'text-muted-foreground'
-                        }`}>
-                          {new Date(message.created_at).toLocaleTimeString()}
                         </div>
-                      </div>
+                      ))}
+                      <div ref={messagesEndRef} />
                     </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8">
-                    <Send className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No messages yet</h3>
-                    <p className="text-muted-foreground text-sm">
-                      Be the first to start the conversation!
-                    </p>
-                  </div>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-            </ScrollArea>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Send className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">No messages yet</h3>
+                      <p className="text-muted-foreground text-sm">
+                        Be the first to start the conversation!
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
 
             {/* Fixed Message Input */}
-            <div className="border-t bg-background p-4">
-              <form onSubmit={handleSendMessage} className="flex gap-2">
-                <Input
-                  placeholder="Type your message..."
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  disabled={sendMessageMutation.isPending}
-                  className="flex-1"
-                />
-                <Button 
-                  type="submit" 
-                  size="icon"
-                  disabled={!newMessage.trim() || sendMessageMutation.isPending}
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              </form>
+            <div className="absolute bottom-0 left-0 right-0 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+              <div className="p-4">
+                <form onSubmit={handleSendMessage} className="flex gap-2">
+                  <Input
+                    placeholder="Type your message..."
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    disabled={sendMessageMutation.isPending}
+                    className="flex-1"
+                  />
+                  <Button 
+                    type="submit" 
+                    size="icon"
+                    disabled={!newMessage.trim() || sendMessageMutation.isPending}
+                    className="flex-shrink-0"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </form>
+              </div>
             </div>
           </div>
         </main>
