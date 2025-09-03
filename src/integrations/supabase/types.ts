@@ -180,6 +180,42 @@ export type Database = {
         }
         Relationships: []
       }
+      payouts: {
+        Row: {
+          amount: number
+          created_at: string
+          cycle_number: number
+          group_id: string
+          id: string
+          payout_date: string
+          recipient_user_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          cycle_number: number
+          group_id: string
+          id?: string
+          payout_date?: string
+          recipient_user_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          cycle_number?: number
+          group_id?: string
+          id?: string
+          payout_date?: string
+          recipient_user_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

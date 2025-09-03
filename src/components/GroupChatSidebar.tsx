@@ -25,7 +25,8 @@ import {
   MoreVertical,
   Clock,
   DollarSign,
-  Shuffle
+  Shuffle,
+  HandCoins
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -37,6 +38,7 @@ import { ReportUserDialog } from './ReportUserDialog';
 import { PaymentScheduleDialog } from './PaymentScheduleDialog';
 import { ContributionsDialog } from './ContributionsDialog';
 import { PayoutOrderDialog } from './PayoutOrderDialog';
+import { PayoutDialog } from './PayoutDialog';
 
 interface GroupChatSidebarProps {
   groupId: string;
@@ -54,6 +56,7 @@ export function GroupChatSidebar({ groupId, isCreator }: GroupChatSidebarProps) 
   const [paymentScheduleOpen, setPaymentScheduleOpen] = useState(false);
   const [contributionsOpen, setContributionsOpen] = useState(false);
   const [payoutOrderOpen, setPayoutOrderOpen] = useState(false);
+  const [payoutDialogOpen, setPayoutDialogOpen] = useState(false);
 
   const { data: groupMembers } = useQuery({
     queryKey: ['group-members', groupId],
@@ -310,6 +313,15 @@ export function GroupChatSidebar({ groupId, isCreator }: GroupChatSidebarProps) 
                     <Shuffle className="h-4 w-4 mr-2" />
                     Payout Order
                   </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full justify-start"
+                    onClick={() => setPayoutDialogOpen(true)}
+                  >
+                    <HandCoins className="h-4 w-4 mr-2" />
+                    Process Payouts
+                  </Button>
                 </div>
               </SidebarGroupContent>
             </SidebarGroup>
@@ -341,6 +353,13 @@ export function GroupChatSidebar({ groupId, isCreator }: GroupChatSidebarProps) 
       <PayoutOrderDialog
         open={payoutOrderOpen}
         onOpenChange={setPayoutOrderOpen}
+        groupId={groupId}
+        isCreator={isCreator}
+      />
+      
+      <PayoutDialog
+        open={payoutDialogOpen}
+        onOpenChange={setPayoutDialogOpen}
         groupId={groupId}
         isCreator={isCreator}
       />
