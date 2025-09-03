@@ -199,12 +199,13 @@ const GroupDetailsModal = ({ group, children, isMember }: GroupDetailsModalProps
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-2xl">{group.name}</DialogTitle>
+      <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] overflow-hidden flex flex-col p-0">
+        <DialogHeader className="px-6 pt-6 pb-2 border-b">
+          <DialogTitle className="text-xl sm:text-2xl">{group.name}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          <div className="space-y-6">
           {/* Group Overview */}
           <Card>
             <CardHeader>
@@ -220,7 +221,7 @@ const GroupDetailsModal = ({ group, children, isMember }: GroupDetailsModalProps
                 <p className="text-muted-foreground">{group.description}</p>
               )}
               
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="flex items-center gap-2">
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
                   <div>
@@ -288,7 +289,7 @@ const GroupDetailsModal = ({ group, children, isMember }: GroupDetailsModalProps
               )}
             </TabsList>
 
-            <TabsContent value="members" className="space-y-4">
+            <TabsContent value="members" className="space-y-4 max-h-[50vh] overflow-y-auto">
               <div className="grid gap-4">
                 {groupMembers?.map((member: any) => (
                   <Card key={member.id}>
@@ -323,7 +324,7 @@ const GroupDetailsModal = ({ group, children, isMember }: GroupDetailsModalProps
             </TabsContent>
 
             {isGroupCreator && (
-              <TabsContent value="requests" className="space-y-4">
+              <TabsContent value="requests" className="space-y-4 max-h-[50vh] overflow-y-auto">
                 {joinRequests && joinRequests.length > 0 ? (
                   <div className="grid gap-4">
                     {joinRequests.map((request: any) => (
@@ -349,35 +350,35 @@ const GroupDetailsModal = ({ group, children, isMember }: GroupDetailsModalProps
                                 <div className="text-xs text-muted-foreground">
                                   Requested {new Date(request.requested_at).toLocaleString()}
                                 </div>
-                              </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => rejectJoinRequest.mutate(request.id)}
-                                disabled={rejectJoinRequest.isPending}
-                              >
-                                <XCircle className="h-4 w-4 mr-1" />
-                                Reject
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => approveJoinRequest.mutate({
-                                  requestId: request.id,
-                                  userId: request.user_id
-                                })}
-                                disabled={approveJoinRequest.isPending}
-                              >
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                                Approve
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
+                               </div>
+                             </div>
+                             <div className="flex gap-2">
+                               <Button
+                                 size="sm"
+                                 variant="outline"
+                                 onClick={() => rejectJoinRequest.mutate(request.id)}
+                                 disabled={rejectJoinRequest.isPending}
+                               >
+                                 <XCircle className="h-4 w-4 mr-1" />
+                                 Reject
+                               </Button>
+                               <Button
+                                 size="sm"
+                                 onClick={() => approveJoinRequest.mutate({
+                                   requestId: request.id,
+                                   userId: request.user_id
+                                 })}
+                                 disabled={approveJoinRequest.isPending}
+                               >
+                                 <CheckCircle className="h-4 w-4 mr-1" />
+                                 Approve
+                               </Button>
+                             </div>
+                           </div>
+                         </CardContent>
+                       </Card>
+                     ))}
+                   </div>
                 ) : (
                   <Card className="text-center py-8">
                     <CardContent>
@@ -398,6 +399,7 @@ const GroupDetailsModal = ({ group, children, isMember }: GroupDetailsModalProps
               </TabsContent>
             )}
           </Tabs>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

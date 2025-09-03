@@ -85,18 +85,19 @@ const JoinGroupDialog = ({ group, children }: JoinGroupDialogProps) => {
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="max-w-md w-[95vw] max-h-[90vh] overflow-hidden flex flex-col p-0">
+        <DialogHeader className="px-6 pt-6 pb-2 border-b">
+          <DialogTitle className="flex items-center gap-2 text-lg">
             <Users className="h-5 w-5" />
             Join Group
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-sm">
             Review the group details and confirm your request to join "{group.name}".
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          <div className="space-y-6">
           {/* Group Summary */}
           <Card>
             <CardContent className="p-4 space-y-3">
@@ -183,6 +184,7 @@ const JoinGroupDialog = ({ group, children }: JoinGroupDialogProps) => {
             >
               {joinGroupMutation.isPending ? 'Sending...' : 'Send Request'}
             </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

@@ -96,7 +96,7 @@ const GroupChat = ({ groupId }: GroupChatProps) => {
   }
 
   return (
-    <Card className="h-96 flex flex-col">
+    <Card className="h-80 sm:h-96 flex flex-col">
       <CardContent className="p-4 flex-1 flex flex-col">
         <ScrollArea className="flex-1 pr-4 mb-4">
           <div className="space-y-4">
