@@ -8,6 +8,12 @@ import { Layout } from "@/components/Layout";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
+import Verification from "./pages/Verification";
+import Groups from "./pages/Groups";
+import Wallet from "./pages/Wallet";
+import Transactions from "./pages/Transactions";
+import Notifications from "./pages/Notifications";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,6 +31,36 @@ const App = () => (
             <Route path="/dashboard" element={
               <Layout requireAuth>
                 <Dashboard />
+              </Layout>
+            } />
+            <Route path="/verification" element={
+              <Layout requireAuth>
+                <Verification />
+              </Layout>
+            } />
+            <Route path="/groups" element={
+              <Layout requireAuth>
+                <Groups />
+              </Layout>
+            } />
+            <Route path="/wallet" element={
+              <Layout requireAuth>
+                <Wallet />
+              </Layout>
+            } />
+            <Route path="/transactions" element={
+              <Layout requireAuth>
+                <Transactions />
+              </Layout>
+            } />
+            <Route path="/notifications" element={
+              <Layout requireAuth>
+                <Notifications />
+              </Layout>
+            } />
+            <Route path="/settings" element={
+              <Layout requireAuth>
+                <Settings />
               </Layout>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
